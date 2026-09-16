@@ -53,7 +53,7 @@ jobs:
               p.write_text(new, encoding='utf-8')
               print(p)
           PY
-      - name: Refine image search and decode assertions
+      - name: Refine assertions for image sources and live tab counters
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -63,6 +63,9 @@ jobs:
           assert text.count(old) == 1
           text = text.replace(old, 'page.locator("#element-search").fill("/media/coast.png")')
           text = text.replace('image.evaluate("e => e.complete && e.naturalWidth > 0")', 'image.evaluate("async e => { await e.decode(); return e.complete && e.naturalWidth > 0; }")')
+          old = 'page.get_by_role("tab", name="Pages", exact=True).click()'
+          assert text.count(old) == 1
+          text = text.replace(old, 'page.locator("#tab-pages").click()')
           p.write_text(text)
           PY
       - name: Install and check
