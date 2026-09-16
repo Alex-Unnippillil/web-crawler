@@ -1,7 +1,7 @@
 /** Pure analysis of already downloaded records. No network or DOM dependencies. */
 import type { CrawlResult, CrawledPage } from '../src/types.js';
 export type NodeState='page'|'error'|'external'|'discovered';
-export interface MapNode {id:string;path:string;group:string;state:NodeState;depth:number;status:number;title:string;inbound:number;outbound:number;root:boolean;}
+export interface MapNode {id:string;path:string;group:string;state:NodeState;depth:number;status:number;title:string;inbound:number;outbound:number;root:boolean;rendering?:string;sitemap?:boolean;sitemapOnly?:boolean;}
 export interface MapEdge {source:string;target:string;}
 export interface ImageRecord {url:string;sources:string[];alts:string[];missing:number;decorative:number;unknown:number;width:number|null;height:number|null;extension:string;}
 export interface ElementRecord {kind:string;url:string;text:string;detail:string;sources:string[];}
@@ -37,6 +37,9 @@ export function buildIndex(result:CrawlResult):AtlasIndex {
     if(edgeKeys.has(key))continue;edgeKeys.add(key);edges.push({source,target});
     byID.get(source)!.outbound++;byID.get(target)!.inbound++;
   }
+  // Sitemap membership is evidence, not an invented hyperlink from the root.
+  for(const entry of result.discovery?.sitemap_urls??[]) {add(entry.url,'discovered');const n=byID.get(identity(entry.url));if(n){n.sitemap=true;n.sitemapOnly=n.inbound===0&&!n.root;}}
+  for(const page of pages) {const n=byID.get(identity(page.url));if(n){n.rendering=page.rendering?.method??'http';if(page.discovery?.method==='sitemap')n.depth=-1;}}
   const imageMap=new Map<string,ImageRecord>();
   const imageFor=(url:string,page:string)=>{
     let row=imageMap.get(url);if(!row){row={url,sources:[],alts:[],missing:0,decorative:0,unknown:0,width:null,height:null,extension:extensionOf(url)};imageMap.set(url,row);}
@@ -81,10 +84,10 @@ export function shortestRoute(index:AtlasIndex,target:string):string[] {
   const path:string[]=[];let current:string|null=target;
   while(current!==null){path.push(current);current=parent.get(current)??null;}return path.reverse();
 }
-export interface MapFilter {query:string;group:string;states:NodeState[];focus:string;limit:number;}
+export interface MapFilter {query:string;group:string;states:NodeState[];focus:string;limit:number;rendering?:string;sitemapOnly?:boolean;}
 export function mapSubset(index:AtlasIndex,filter:MapFilter){
   const nearby=new Set([filter.focus]);if(filter.focus)for(const e of index.edges)if(e.source===filter.focus||e.target===filter.focus){nearby.add(e.source);nearby.add(e.target);}
-  const matched=index.nodes.filter(n=>filter.states.includes(n.state)&&(!filter.group||n.group===filter.group)&&(!filter.query||`${n.id} ${n.title}`.toLowerCase().includes(filter.query.toLowerCase()))&&(!filter.focus||nearby.has(n.id)));
+  const matched=index.nodes.filter(n=>filter.states.includes(n.state)&&(!filter.rendering||n.rendering===filter.rendering)&&(!filter.sitemapOnly||n.sitemapOnly)&&(!filter.group||n.group===filter.group)&&(!filter.query||`${n.id} ${n.title}`.toLowerCase().includes(filter.query.toLowerCase()))&&(!filter.focus||nearby.has(n.id)));
   matched.sort((a,b)=>Number(b.id===filter.focus)-Number(a.id===filter.focus)||Number(b.root)-Number(a.root)||b.inbound-a.inbound||a.id.localeCompare(b.id));
   const nodes=matched.slice(0,Math.min(500,Math.max(1,filter.limit))),ids=new Set(nodes.map(n=>n.id));
   const edges=index.edges.filter(e=>ids.has(e.source)&&ids.has(e.target)&&e.source!==e.target);
