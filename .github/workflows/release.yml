@@ -1,23 +1,26 @@
-# Repository note: Builds, smoke-tests, checksums, and publishes portable release archives.
+# Repository note: Validates actual portable downloads before publishing; PR runs never publish.
 name: Build portable release
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    # Packaging and acceptance-test fixes can retry an unpublished version too.
     paths: ['package.json', 'scripts/package-portable.mjs', 'tests/portable_smoke.py', '.github/workflows/release.yml']
+  pull_request:
+    paths: ['package.json', 'package-lock.json', 'scripts/package-portable.mjs', 'tests/portable_smoke.py', '.github/workflows/release.yml']
 permissions:
   contents: read
 concurrency:
-  group: portable-release
+  group: portable-${{ github.event.pull_request.number || 'release' }}
   cancel-in-progress: false
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      REQUIRE_BROWSER: '1'
     outputs:
       version: ${{ steps.version.outputs.version }}
-      exists: ${{ steps.version.outputs.exists }}
+      build_required: ${{ steps.version.outputs.build_required }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -29,29 +32,36 @@ jobs:
       - id: version
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if gh release view "v$VERSION" >/dev/null 2>&1; then
-            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT" == 'pull_request' ]]; then
+            echo 'build_required=true' >> "$GITHUB_OUTPUT"
+          elif gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo 'build_required=false' >> "$GITHUB_OUTPUT"
           else
-            echo 'exists=false' >> "$GITHUB_OUTPUT"
+            echo 'build_required=true' >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.version.outputs.exists == 'false'
+      - name: Validate all crawl modes and real GUI workflows
+        if: steps.version.outputs.build_required == 'true'
         run: |
           npm ci
+          npx playwright install --with-deps chromium
+          bash .github/prepare-browser-ci.sh
+          python3 -m pip install playwright==1.63.0
           npm run check
           npm run demo
           python3 -m unittest discover -s tests -p 'test_*.py'
-          python3 -m pip install playwright
-          python3 -m playwright install --with-deps chromium
           python3 tests/e2e.py
+          python3 tests/hybrid_e2e.py
   package:
     needs: validate
-    if: needs.validate.outputs.exists == 'false'
+    if: needs.validate.outputs.build_required == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
+      fail-fast: false
       matrix:
         platform: [win-x64, linux-x64, darwin-arm64, darwin-x64]
     steps:
@@ -95,6 +105,8 @@ jobs:
       - run: python tests/portable_smoke.py downloads/Web-Crawler-Studio-${{ needs.validate.outputs.version }}-${{ matrix.platform }}.zip
   publish:
     needs: [validate, package, smoke]
+    # A PR can build and test archives but cannot create a tag or release.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.validate.outputs.build_required == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -112,4 +124,4 @@ jobs:
           gh release create "v$VERSION" downloads/* \
             --target "${{ github.sha }}" \
             --title "Web Crawler Studio $VERSION" \
-            --notes "Visual Atlas: interactive spiderweb with three layouts, route tracing and neighborhood focus; a URL-path tree; opt-in image galleries and searchable link, heading, resource and form catalogs; visual insights, compact density and keyboard navigation. The TypeScript CLI, saved history and exports remain supported. Download the ZIP matching your OS, extract all files, and open the launcher. Node.js 24 is bundled; no separate Node/npm installation is required. Use Explore visual demo to try the features locally. Builds are unsigned. Verify the SHA-256 sidecar and follow your OS security policy. Setup and usage instructions are in README.md and docs/VISUAL-ATLAS.md."
+            --notes "Hybrid Workbench: Fast HTTP, Smart escalation and sandboxed Chromium rendering; raw/rendered comparisons, screenshots, request waterfall and console diagnostics; resource, JSON-LD, sitemap and robots workspaces; custom CSS extraction and local configuration profiles. Visual Atlas gains processing-method and sitemap-only filters. Tables offer combined filters, column controls, selection and scoped exports. Download the ZIP matching your OS, extract it completely, and open the launcher. Node.js 24 and production dependencies are bundled. Chromium is an OPTIONAL, separate one-time download: Windows users run Install Browser.cmd; Linux/macOS users run bash install-browser.sh. Fast HTTP needs no browser download. Use Try hybrid lab after installation. Existing history and the TypeScript CLI remain supported. Builds are unsigned/not notarized. Check the SHA-256 sidecar and follow your OS security policy. See README.md, docs/HYBRID.md and docs/PERFORMANCE.md for setup, measurements and explicit limits."
