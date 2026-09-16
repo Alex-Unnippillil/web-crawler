@@ -9,7 +9,25 @@ export interface ExtractedPageData {
   outgoing_links: string[];
   image_urls: string[];
 }
+/** Optional additions keep v3 history and the five original course fields readable. */
+export interface ImageElement {
+  src: string; candidates: string[]; alt: string | null;
+  width: number | null; height: number | null; loading: string;
+}
+export interface ResourceElement {
+  kind: 'script' | 'stylesheet' | 'video' | 'audio' | 'frame' | 'document' | 'poster' | 'other';
+  url: string; type: string;
+}
+export interface PageElements {
+  headings: { level: number; text: string; id: string }[];
+  images: ImageElement[];
+  links: { url: string; text: string; rel: string; target: string }[];
+  resources: ResourceElement[];
+  forms: { action: string; method: string; fields: { tag: string; type: string; name: string }[] }[];
+  truncated: boolean; language: string; robots: string;
+}
 export interface PageDetails extends ExtractedPageData {
+  elements?: PageElements;
   title?: string;
   description?: string;
   canonical_url?: string;

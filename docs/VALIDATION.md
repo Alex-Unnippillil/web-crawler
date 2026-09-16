@@ -1,7 +1,15 @@
 <!-- Repository note: Records validation coverage, release checks, and known testing limits. -->
 # Validation and release checks
 
-## Validated source candidate — September 16, 2026
+## Visual Atlas 4.0 validation
+
+`npm run check` now covers 23 Vitest tests and 148 Node tests, including static element extraction, actual directed graph routing, bounded layout/sampling, backwards-compatible history analysis, and raster-preview safeguards. A real local API test crawls the 37-page visual fixture and verifies image previews and original-field exports. The optional POSIX monitoring suite is unchanged (five tests).
+
+`tests/e2e.py` also invokes `tests/atlas_e2e.py` for actual pointer selection, route tracing, neighborhood focus, layouts, search/filter controls, SVG/PNG/JSON downloads, path trees, explicit thumbnail consent, lightbox navigation, element catalogs, pagination, source drill-down, themes, quick navigation, mobile layout, and reload behavior. It writes genuine captures into `docs/` when run against the application. Inspect the commit's workflow conclusion for the result.
+
+The development container's browser blocks network navigation by policy. Local visual inspection therefore used in-memory copies of records from a real locally executed fixture crawl, without changing that policy. Those offline rendering checks are not a substitute for the normal-origin browser tests on GitHub Actions.
+
+## Version 3 validated source candidate — September 16, 2026
 
 The [candidate validation run](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35119654802) completed successfully on Ubuntu with Node.js 24 and the repository's locked dependencies.
 

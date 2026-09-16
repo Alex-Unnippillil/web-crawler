@@ -1,6 +1,6 @@
 {
   "name": "web-crawler",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "main": "dist/index.js",
   "scripts": {
     "start": "tsx ./src/index.ts",
@@ -29,7 +29,7 @@
   ],
   "author": "Alex Unnippillil",
   "license": "ISC",
-  "description": "A local-first TypeScript web crawler with a browser GUI, live controls, persistent history and offline reports.",
+  "description": "A local-first TypeScript web crawler with a visual spiderweb explorer, URL-path tree, image and element catalogs, live controls and offline reports.",
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.5.1",

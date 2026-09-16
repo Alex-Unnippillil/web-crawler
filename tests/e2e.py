@@ -14,6 +14,7 @@ import tempfile
 import time
 import urllib.request
 from playwright.sync_api import sync_playwright, expect
+from atlas_e2e import run_visual_checks
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
@@ -37,7 +38,7 @@ with tempfile.TemporaryDirectory(prefix="crawler-e2e-") as directory:
         else:
             raise RuntimeError("The studio server did not start.")
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(headless=True, **({"executable_path": os.environ["CHROMIUM_EXECUTABLE"]} if os.environ.get("CHROMIUM_EXECUTABLE") else {}))
             page = browser.new_page(viewport={"width": 1440, "height": 1080}, color_scheme="light")
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
@@ -65,8 +66,8 @@ with tempfile.TemporaryDirectory(prefix="crawler-e2e-") as directory:
             page.get_by_role("tab", name="Issues").click()
             assert page.locator(".issue").count() == 4
             page.get_by_role("tab", name="Link map").click()
-            assert page.locator(".graph-node").count() == 10
-            page.locator(".graph-node").first.press("Enter")
+            assert page.locator(".atlas-node").count() >= 10
+            page.locator(".atlas-node").first.press("Enter")
             assert page.locator("#detail-dialog").is_visible()
             page.get_by_role("button", name="Close page details").click()
             page.get_by_role("button", name="Export results", exact=True).click()
@@ -99,6 +100,7 @@ with tempfile.TemporaryDirectory(prefix="crawler-e2e-") as directory:
             page.reload(wait_until="networkidle")
             expect(page.locator("#metric-pages")).to_have_text("10")
             assert page.locator("html").get_attribute("data-theme") == "light"
+            run_visual_checks(page, DOCS)
             assert errors == [], errors
             print(json.dumps({"result": "PASS", "pages": 10, "issues": 4, "browser_errors": errors,
                               "checks": ["actual HTTP origin", "real jsdom parser", "demo", "pause/resume", "search", "inspector", "issues", "graph keyboard", "CSV export", "themes", "history", "mobile", "presets", "reload"]}, indent=2))

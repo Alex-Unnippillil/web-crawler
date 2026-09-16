@@ -8,12 +8,14 @@ import { runCrawl } from '../engine.js';
 import { validateOptions } from '../options.js';
 import { httpURL } from '../url.js';
 import { publicFetch } from './network.js';
+import { startAtlasDemoSite } from './atlas-demo.js';
 import { startDemoSite } from './demo.js';
 import type { CrawlResult, CrawlOptions, CrawlHooks } from '../types.js';
 
 export type JobStatus = 'running' | 'paused' | 'stopping' | 'completed' | 'stopped' | 'failed' | 'interrupted';
 export interface JobMeta {
   id: string; name: string; url: string; demo: boolean; status: JobStatus; createdAt: string;
+  demoMode?: 'basic' | 'atlas';
   finishedAt?: string; revision: number; pages: number; failures: number; durationMs: number;
   options: CrawlOptions; message?: string;
 }
@@ -77,22 +79,23 @@ export class Jobs {
     if (this.metadata.size >= 30) throw new Error('History holds up to 30 crawls. Export and delete an old crawl first.');
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid crawl configuration.');
     const input = body as Record<string, unknown>;
+    if (typeof input.atlas !== 'undefined' && typeof input.atlas !== 'boolean') throw new Error('atlas must be a boolean.');
     if (typeof input.demo !== 'undefined' && typeof input.demo !== 'boolean') throw new Error('demo must be a boolean.');
     const raw = input.options ?? {};
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid options.');
-    const options = validateOptions({ ...(raw as Partial<CrawlOptions>), respectRobots: true, userAgent: 'CrawlerStudio/3.0', maxLinksPerPage: 500, maxBodyBytes: 2 * 1024 * 1024 });
+    const options = validateOptions({ ...(raw as Partial<CrawlOptions>), respectRobots: true, userAgent: 'CrawlerStudio/4.0', maxLinksPerPage: 500, maxBodyBytes: 2 * 1024 * 1024 });
     if (options.maxPages > 500 || options.maxConcurrency > 8 || options.delayMs < 100 || options.maxDurationMs > 3600000) {
       throw new Error('GUI limits: 500 URLs, 8 workers, at least 100 ms between requests, and a 60-minute deadline.');
     }
     this.starting = true;
     let demo: Awaited<ReturnType<typeof startDemoSite>> | undefined;
     try {
-      if (input.demo === true) demo = await startDemoSite();
+      if (input.demo === true) demo = input.atlas === true ? await startAtlasDemoSite() : await startDemoSite();
       const url = demo?.url ?? httpURL(String(input.url ?? ''));
       if (url.length > 2048) throw new Error('URL is too long.');
       const job: Job = {
-        id: randomUUID(), name: typeof input.name === 'string' && input.name.trim() ? input.name.trim().slice(0, 100) : demo ? 'Fieldnotes · local demo' : new URL(url).hostname,
-        url, demo: !!demo, status: 'running', createdAt: new Date().toISOString(), revision: 0,
+        id: randomUUID(), name: typeof input.name === 'string' && input.name.trim() ? input.name.trim().slice(0, 100) : demo ? (input.atlas === true ? 'Fieldnotes · visual atlas demo' : 'Fieldnotes · local demo') : new URL(url).hostname,
+        url, demo: !!demo, demoMode: demo ? (input.atlas === true ? 'atlas' : 'basic') : undefined, status: 'running', createdAt: new Date().toISOString(), revision: 0,
         pages: 0, failures: 0, durationMs: 0, options, logs: [],
       };
       this.current = job; this.controller = new AbortController(); this.changed(job); this.save(job);

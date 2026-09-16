@@ -8,6 +8,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { MediaPreviews } from './media.js';
 import { Jobs } from './jobs.js';
 import { renderCSV, renderHTML, renderGraph } from '../report.js';
 import type { CrawlHooks } from '../types.js';
@@ -17,7 +18,7 @@ const MAX_BODY = 16 * 1024;
 const securityHeaders = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
   'X-Frame-Options': 'DENY', 'Cache-Control': 'no-store',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
 };
 async function body(req: IncomingMessage): Promise<unknown> {
   if (!String(req.headers['content-type']).startsWith('application/json')) throw new Error('Send application/json.');
@@ -40,6 +41,7 @@ function openBrowser(url: string): void {
   const child = spawn(command, args, { stdio: 'ignore', detached: true }); child.on('error', () => {}); child.unref();
 }
 export async function startStudio(config: { port?: number; directory?: string; open?: boolean; hooks?: CrawlHooks; assets?: string } = {}) {
+  const media = new MediaPreviews();
   const token = randomBytes(32).toString('hex');
   const store = new Jobs(config.directory ?? process.env.CRAWLER_DATA_DIR ?? join(homedir(), '.web-crawler-studio'), config.hooks);
   await store.init();
@@ -59,9 +61,9 @@ export async function startStudio(config: { port?: number; directory?: string; o
         const received = Buffer.from(String(req.headers['x-crawler-token'] ?? ''));
         const secret = Buffer.from(token);
         if (received.length !== secret.length || !timingSafeEqual(received, secret)) { send(res, 403, { error: 'Session expired. Refresh this page.' }); return; }
-        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '3.0.0' }); return; }
+        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.0.0' }); return; }
         if (url.pathname === '/api/jobs' && req.method === 'POST') { send(res, 201, await store.start(await body(req))); return; }
-        const match = /^\/api\/jobs\/([a-f0-9-]{36})(?:\/(pause|resume|stop|export))?$/.exec(url.pathname);
+        const match = /^\/api\/jobs\/([a-f0-9-]{36})(?:\/(pause|resume|stop|export|image))?$/.exec(url.pathname);
         if (match) {
           const id = match[1]!; const action = match[2];
           if (!action && req.method === 'GET') {
@@ -73,6 +75,12 @@ export async function startStudio(config: { port?: number; directory?: string; o
           }
           if (!action && req.method === 'DELETE') { await store.delete(id); send(res, 200, { ok: true }); return; }
           if (action && ['pause', 'resume', 'stop'].includes(action) && req.method === 'POST') { send(res, 200, store.control(id, action)); return; }
+          if (action === 'image' && req.method === 'GET') {
+            const job = await store.get(id);
+            const image = await media.load(job, url.searchParams.get('url') ?? '');
+            res.writeHead(200, { 'Content-Type': image.type, 'Content-Length': image.bytes.length });
+            res.end(image.bytes); return;
+          }
           if (action === 'export' && req.method === 'GET') {
             const job = await store.get(id); const result = job.result;
             if (!result) throw new Error('This crawl has no results to export yet.');
@@ -97,6 +105,12 @@ export async function startStudio(config: { port?: number; directory?: string; o
         '/': ['ui/index.html', 'text/html'], '/index.html': ['ui/index.html', 'text/html'],
         '/app.js': ['ui-dist/app.js', 'text/javascript'], '/styles.css': ['ui/styles.css', 'text/css'],
         '/favicon.svg': ['ui/favicon.svg', 'image/svg+xml'],
+        '/atlas.js': ['ui-dist/atlas.js', 'text/javascript'],
+        '/atlas-model.js': ['ui-dist/atlas-model.js', 'text/javascript'],
+        '/atlas-graph.js': ['ui-dist/atlas-graph.js', 'text/javascript'],
+        '/atlas-elements.js': ['ui-dist/atlas-elements.js', 'text/javascript'],
+        '/atlas-shared.js': ['ui-dist/atlas-shared.js', 'text/javascript'],
+        '/atlas.css': ['ui/atlas.css', 'text/css'],
       };
       const file = staticFiles[url.pathname];
       if (!file) { send(res, 404, { error: 'Not found.' }); return; }

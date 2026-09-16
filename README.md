@@ -2,17 +2,27 @@
 <div align="center">
 
 # Web Crawler Studio
-### A TypeScript crawler with a human-friendly workspace.
+### Visual Atlas 4.0 — see the structure behind the site.
 
-**Start with a URL. Explore its pages. Understand the connections.**
+**Crawl a website. Trace its connections. Explore its images and elements.**
 
 [Download a portable release](https://github.com/Alex-Unnippillil/web-crawler/releases/latest) · [Getting started](#getting-started) · [Using the app](#using-the-app) · [Troubleshooting](#troubleshooting) · [For developers](#for-developers)
 
 </div>
 
-![Web Crawler Studio — page inventory from the built-in local demonstration site](docs/studio-desktop.png)
+![Visual Atlas spiderweb — observed hyperlinks in the built-in local demonstration site](docs/atlas-spiderweb.png)
+
+*Screenshots show the real local demonstration crawl. Its landscape images are locally generated demo artwork, not a public-site crawl.*
 
 A local-first browser application built around a bounded TypeScript web crawler. No account, API key, database service, or subscription. The original command-line interface and Boot.dev page fields are preserved.
+
+## What is new in 4.0
+
+**Visual Atlas** adds an interactive spiderweb with force/radial/depth layouts, incoming and outgoing connections, neighborhood focus, and shortest-route tracing; a separate expandable URL-path tree; and searchable image, link, heading, resource, and form catalogs. The image gallery has opt-in thumbnails, an inspector with previous/next navigation, and source-page drill-downs. A new Insights view visualizes the crawl, and compact density plus Ctrl/Command+K makes the denser workspace easier to navigate.
+
+![Image catalog with explicitly enabled previews of local demo artwork](docs/atlas-images.png)
+
+[Visual Atlas guide](docs/VISUAL-ATLAS.md) · [Route tracing](docs/atlas-route.png) · [Insights dashboard](docs/atlas-insights.png) · [Dark theme](docs/atlas-dark.png)
 
 ## What you can do
 
@@ -20,7 +30,8 @@ A local-first browser application built around a bounded TypeScript web crawler.
 - **See what is happening.** Live counts, URL-budget progress, current requests, activity logs, pause/resume, and stop with partial results.
 - **Inspect real results.** Search, filter, sort, and paginate pages. Open a page inspector for headings, descriptions, canonical URLs, inbound links, outgoing links, and image URLs.
 - **Review problems.** Fetch errors, missing titles/headings/descriptions, and repeated titles are reported separately. These are basic checks, not an SEO score or a comprehensive audit.
-- **Explore connections.** Selectable link-map nodes, keyboard selection, pan/zoom, and an SVG export.
+- **Explore connections and paths.** Drag/zoom the spiderweb, focus a neighborhood, trace a route, switch layouts, inspect failures and unfetched URLs, or browse the directory tree. Export the drawing as SVG/PNG or the complete captured graph as JSON.
+- **Browse elements quickly.** Search and filter images, links, H1–H6 headings, resources, and forms. Image grid/list views, opt-in previews, source-page filters, and filtered CSV/JSON exports keep the investigation focused.
 - **Keep and share the work.** Persistent local history and JSON, complete-crawl JSON, CSV, standalone HTML, and SVG downloads. Dark/light themes, responsive layouts, keyboard shortcuts, and accessible native dialogs.
 
 ## Getting started
@@ -98,7 +109,9 @@ History is stored outside the repository, so another clone under the same OS use
 
 ### 1. Try it without crawling anyone else's site
 
-Click **Try a local demo**. This starts a small, real HTTP website on your computer and crawls it. It intentionally includes a broken link, missing metadata, a redirect, and a robots-disallowed path. No external site is fetched. This is not fabricated crawl output.
+Click **Explore visual demo** for the richer 37-page fixture with eight generated demo images and six path groups. It opens the spiderweb and makes no requests to an external site. Then visit **Elements → Load previews** to try the image browser.
+
+**Try a local demo** remains available for a smaller example. It starts a small, real HTTP website on your computer and crawls it. It intentionally includes a broken link, missing metadata, a redirect, and a robots-disallowed path. No external site is fetched. This is not fabricated crawl output.
 
 ### 2. Start a real crawl
 
@@ -126,7 +139,13 @@ The GUI always respects `robots.txt`, limits requests to the same origin, and do
 
 **Issues:** review HTTP/network failures and basic content checks. A missing description may be intentional; findings are not ranked SEO judgments. A failed URL's inspector lists crawled pages linking to it. External URLs have not been availability-checked.
 
-**Link map:** successful pages only, capped at 80 interactive nodes and 1,200 connections for responsiveness. Drag the background to pan, scroll to zoom, or select a node. The separately exported SVG uses the report renderer's 120-node / 2,000-connection cap.
+**Link map:** spiderweb, radial, and discovery-depth layouts; draggable nodes, zoom, path/status filters, neighborhood focus, and directed route tracing. Drawings are bounded at 500 nodes and 3,000 links, with displayed counts. Graph JSON retains the complete captured index. The separate global SVG export retains the older static report renderer.
+
+**URL paths:** expandable directory groupings with search and optional failed/discovered URLs. These groupings are not inferred hyperlinks.
+
+**Elements:** image grid/list, links, headings, resources, and form structure. Filter by source page, type, or alt status; inspect attributes and references; export the filtered catalog. Image previews require a click and make extra, bounded requests through the local server. SVG stays URL-only. No scripts or forms are executed.
+
+**Insights:** path, status, and discovery-depth distributions, captured HTML bytes, median fetch duration, and top referenced pages. Read the [measurement and privacy notes](docs/VISUAL-ATLAS.md).
 
 **Activity:** the latest 250 diagnostic entries, with timestamps. TLS verification is never disabled to make a crawl succeed.
 
@@ -148,7 +167,11 @@ Exports include current/partial results. Review URLs and extracted content befor
 
 ### Keyboard shortcuts
 
-`N` opens a new crawl. `/` focuses page search. `Esc` closes a dialog. Arrow keys navigate result tabs. Tab/Enter navigate and activate controls; Enter/Space open a focused graph node. Shortcuts do not steal typing inside inputs.
+`N` opens a new crawl. `/` focuses page search. `Esc` closes a dialog. Arrow keys navigate result tabs. Tab/Enter navigate and activate controls; Enter opens a focused graph node; Space selects it. Ctrl/Command+K opens quick navigation. Image-inspector arrows browse the filtered set. Shortcuts do not steal typing inside inputs.
+
+### Upgrading from version 3
+
+Close the running app before updating. For a portable installation, extract the new release into a **new folder** and launch it there; do not mix files from two versions. Saved history lives outside the application folder. Older runs still open, but enriched element details require a fresh crawl; missing legacy metadata is labeled explicitly.
 
 ## Where data is stored
 
@@ -217,11 +240,18 @@ The frontend is **TypeScript using browser-native DOM APIs**; it does not add a 
 ```text
 src/engine.ts             Queue, transport budgets, retries, robots and crawl hooks
 src/extract.ts            Single-pass jsdom extraction; no script execution
+src/elements.ts           Bounded images, headings, links, resources and form structure
 src/report.ts             JSON, CSV, HTML and SVG reports
 src/studio/server.ts      Loopback HTTP API, session protection and static assets
 src/studio/jobs.ts        Job lifecycle, pause/stop, checkpoints and local history
 src/studio/network.ts     Public-address validation and DNS-pinned requests
 src/studio/demo.ts        Owned local demonstration website
+src/studio/media.ts       Authenticated, bounded, DNS-checked raster previews
+src/studio/atlas-demo.ts  Real multi-section local visualization fixture
+ui/atlas-model.ts         Pure observed-link analysis and layout calculations
+ui/atlas-graph.ts         Interactive spiderweb and graph exports
+ui/atlas-elements.ts      Searchable catalogs and opt-in image gallery
+ui/atlas.ts               Insights and URL-path workspace coordination
 ui/app.ts                 Typed browser UI and interactions
 ui/index.html             Semantic shell and accessible dialogs
 ui/styles.css            Responsive light/dark design system

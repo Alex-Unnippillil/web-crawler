@@ -25,3 +25,11 @@ The original CLI may deliberately access authorized private development sites an
 ## Reporting
 
 For a suspected vulnerability, avoid including credentials, private crawl output, or a working exploit against a third-party site in a public issue. Use the repository's private security reporting channel when enabled; otherwise contact the maintainer through their GitHub profile to arrange a private disclosure.
+
+## Visual Atlas image previews
+
+Previews are opt-in and separate from crawl request budgets. The authenticated image API accepts only recorded image URLs, checks public destinations with DNS-pinned requests, rechecks redirects, and does not forward cookies or referrers. Only signature-checked raster responses are returned, up to 4 MiB, four server requests at a time, with a 10-second timeout. SVG and HTML are rejected. The locally generated demo artwork is an allowlisted exception tied to that saved demo origin, not an arbitrary localhost proxy.
+
+Previewing public CDN images contacts those hosts and exposes the requesting machine's network address. Closing a view prevents additional queued requests, not requests already started. Browser image decoders still handle untrusted bytes; encoded-byte limits are not decoded-pixel or memory guarantees. Keep the bundled runtime and browser updated.
+
+Element extraction collects static markup attributes and bounded text, not form values or script contents. It does not submit forms, execute JavaScript, or embed frames/audio/video. Extracted text, URLs and names may still be sensitive; review exports before sharing.
