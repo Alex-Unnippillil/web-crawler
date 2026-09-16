@@ -1,0 +1,219 @@
+name: Comment every safe file
+
+on:
+  push:
+    branches: [comments/all-files-update-20260916]
+
+permissions:
+  contents: write
+
+jobs:
+  comment-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Start from current main
+        run: |
+          git fetch origin main
+          git checkout -B comment-work origin/main
+
+      - name: Add safe file comments and complete inventory
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          MARKER = "Repository note:"
+
+          def purpose(path: str) -> str:
+              exact = {
+                  "README.md": "Primary setup, usage, download, and troubleshooting guide for Web Crawler Studio.",
+                  "CHANGELOG.md": "Records user-visible changes between project versions.",
+                  "SECURITY.md": "Documents the local security model, reporting guidance, and crawler safety boundaries.",
+                  ".editorconfig": "Keeps basic editor formatting consistent across contributors and operating systems.",
+                  ".env.example": "Shows optional environment variables without containing real secrets.",
+                  ".gitignore": "Excludes dependencies, build outputs, reports, secrets, and local state from Git.",
+                  "Start Web Crawler.cmd": "Windows source launcher that prepares and starts the local Studio GUI.",
+                  "Start Web Crawler.command": "macOS launcher that prepares and starts the local Studio GUI.",
+                  "start.sh": "POSIX launcher for Linux, WSL, and macOS source installations.",
+                  "src/cli.ts": "Parses the command-line interface while preserving the original Boot.dev invocation style.",
+                  "src/crawl.ts": "Provides the compatibility-facing crawl helpers and public crawl entry points.",
+                  "src/engine.ts": "Implements bounded crawl scheduling, fetching, retries, pacing, cancellation, and crawl lifecycle behavior.",
+                  "src/extract.ts": "Extracts page metadata, links, images, and other crawl records from HTML.",
+                  "src/index.ts": "Runs the TypeScript command-line crawler and writes requested reports.",
+                  "src/options.ts": "Defines and validates crawler defaults and runtime option limits.",
+                  "src/report.ts": "Builds JSON, CSV, HTML, summary, and SVG crawl reports safely.",
+                  "src/robots.ts": "Parses and evaluates robots.txt rules for crawler access decisions.",
+                  "src/types.ts": "Defines shared TypeScript contracts for pages, failures, options, progress, and results.",
+                  "src/url.ts": "Normalizes, validates, resolves, and scopes URLs used by the crawler.",
+                  "src/studio/demo.ts": "Creates the built-in local demonstration website used to explore Studio without contacting an external site.",
+                  "src/studio/jobs.ts": "Manages GUI crawl jobs, checkpoints, history, controls, and exports.",
+                  "src/studio/network.ts": "Applies local-GUI network safeguards, including public-address validation and DNS checks.",
+                  "src/studio/server.ts": "Hosts the loopback-only Studio interface and its authenticated local API.",
+                  "ui/app.ts": "Implements browser-side Studio interactions, views, filtering, history, controls, and exports.",
+                  "ui/index.html": "Defines the accessible semantic structure of the Web Crawler Studio interface.",
+                  "ui/styles.css": "Defines the responsive visual system, themes, layout, controls, tables, dialogs, and link map styling.",
+                  "ui/favicon.svg": "Vector favicon used by the local Studio browser interface.",
+                  "scripts/build-ui.mjs": "Builds browser JavaScript from the erasable TypeScript UI source.",
+                  "scripts/demo.mjs": "Runs the deterministic local CLI demonstration and verifies its crawl output.",
+                  "scripts/launch.mjs": "Prepares dependencies/build output and launches the local Studio server for source installs.",
+                  "scripts/monitor.py": "Optional POSIX monitoring helper for scheduled crawls and email notifications.",
+                  "scripts/package-portable.mjs": "Assembles portable application ZIPs with an official Node.js runtime.",
+                  "scripts/sample-report.mjs": "Generates repository sample reports from deterministic demonstration data.",
+                  "tests/core.test.mjs": "Exercises crawler, URL, robots, networking, reporting, CLI, and core behavior.",
+                  "tests/studio.test.mjs": "Exercises the local Studio API, security boundaries, history, controls, and exports.",
+                  "tests/e2e.py": "Runs Chromium end-to-end checks against the real local Studio interface.",
+                  "tests/portable_smoke.py": "Smoke-tests extracted portable distributions using their bundled runtime and launchers.",
+                  "tests/test_monitor.py": "Tests the optional POSIX monitoring and notification helper.",
+                  "src/crawl.test.ts": "Vitest compatibility tests for crawl helpers and the original course-facing API.",
+                  "src/extract.test.ts": "Vitest/jsdom tests for HTML metadata, links, images, and extraction behavior.",
+                  "vitest.config.ts": "Configures the Vitest suite for the TypeScript crawler source.",
+                  ".github/dependabot.yml": "Configures automated dependency and GitHub Actions update checks.",
+                  ".github/workflows/ci.yml": "Runs cross-platform validation for crawler and GUI changes.",
+                  ".github/workflows/release.yml": "Builds, smoke-tests, checksums, and publishes portable release archives.",
+                  "docs/MONITORING.md": "Explains optional scheduled monitoring and email-report operation.",
+                  "docs/VALIDATION.md": "Records validation coverage, release checks, and known testing limits.",
+              }
+              if path in exact:
+                  return exact[path]
+              if path.startswith("docs/"):
+                  return "Project documentation or reference material for Web Crawler Studio."
+              if path.startswith("examples/"):
+                  return "Generated sample output that demonstrates an export format without requiring a live crawl."
+              if path.startswith("src/"):
+                  return "TypeScript source used by the crawler or local Studio application."
+              if path.startswith("ui/"):
+                  return "Browser-interface source or visual asset for Web Crawler Studio."
+              if path.startswith("scripts/"):
+                  return "Development, packaging, launch, demonstration, or monitoring automation."
+              if path.startswith("tests/"):
+                  return "Automated verification for crawler, Studio, packaging, or monitoring behavior."
+              if path.startswith(".github/"):
+                  return "GitHub repository automation or dependency-maintenance configuration."
+              return "Repository file used by Web Crawler Studio."
+
+          tracked = subprocess.check_output(["git", "ls-files"], text=True).splitlines()
+          skipped = []
+          changed = []
+
+          def insert_text(path: Path, header: str, kind: str) -> bool:
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except (UnicodeDecodeError, OSError):
+                  return False
+              if MARKER in text[:1500]:
+                  return True
+              lines = text.splitlines(keepends=True)
+              if kind == "shell":
+                  if lines and lines[0].startswith("#!"):
+                      lines.insert(1, header + "\n")
+                  else:
+                      lines.insert(0, header + "\n")
+              elif kind == "cmd":
+                  if lines and lines[0].strip().lower() == "@echo off":
+                      lines.insert(1, header + "\r\n")
+                  else:
+                      lines.insert(0, header + "\r\n")
+              elif kind == "html":
+                  if lines and lines[0].lstrip().lower().startswith("<!doctype"):
+                      lines.insert(1, header + "\n")
+                  else:
+                      lines.insert(0, header + "\n")
+              elif kind == "xml":
+                  if lines and lines[0].lstrip().startswith("<?xml"):
+                      lines.insert(1, header + "\n")
+                  else:
+                      lines.insert(0, header + "\n")
+              else:
+                  lines.insert(0, header + "\n")
+              path.write_text("".join(lines), encoding="utf-8", newline="")
+              return True
+
+          for item in tracked:
+              path = Path(item)
+              suffix = path.suffix.lower()
+              note = purpose(item)
+              supported = True
+              if suffix in {".ts", ".js", ".mjs", ".cjs"}:
+                  ok = insert_text(path, f"// {MARKER} {note}", "plain")
+              elif suffix == ".py":
+                  ok = insert_text(path, f"# {MARKER} {note}", "shell")
+              elif suffix in {".sh", ".command"}:
+                  ok = insert_text(path, f"# {MARKER} {note}", "shell")
+              elif suffix in {".cmd", ".bat"}:
+                  ok = insert_text(path, f"REM {MARKER} {note}", "cmd")
+              elif suffix in {".yml", ".yaml"} or path.name in {".gitignore", ".env.example", ".editorconfig"}:
+                  ok = insert_text(path, f"# {MARKER} {note}", "plain")
+              elif suffix == ".md":
+                  ok = insert_text(path, f"<!-- {MARKER} {note} -->", "plain")
+              elif suffix == ".html":
+                  ok = insert_text(path, f"<!-- {MARKER} {note} -->", "html")
+              elif suffix == ".css":
+                  ok = insert_text(path, f"/* {MARKER} {note} */", "plain")
+              elif suffix == ".svg":
+                  ok = insert_text(path, f"<!-- {MARKER} {note} -->", "xml")
+              else:
+                  supported = False
+                  ok = False
+
+              if supported and ok:
+                  changed.append(item)
+              else:
+                  skipped.append((item, note))
+
+          # Inventory gives every tracked file a human-readable purpose, including
+          # formats where inline comments would be invalid or would alter data.
+          inventory = Path("docs/FILE-COMMENTS.md")
+          all_items = sorted(set(tracked + [str(inventory)]))
+          skipped_names = {name for name, _ in skipped}
+          rows = [
+              "<!-- Repository note: Inventory of the purpose of every tracked repository file, including formats that cannot safely contain inline comments. -->",
+              "# File comments and purpose inventory",
+              "",
+              "Every tracked repository file is documented here. Files whose formats safely support comments also contain an inline `Repository note:` header. JSON, lockfiles, CSV data, images, runtime-version files, and license text are documented here instead of being modified with invalid or behavior-changing pseudo-comments.",
+              "",
+              "| File | Purpose | Inline comment |",
+              "|---|---|---|",
+          ]
+          for item in all_items:
+              safe = item not in skipped_names and item != str(inventory)
+              if item == str(inventory):
+                  state = "Yes — this inventory documents itself."
+              elif safe:
+                  state = "Yes"
+              else:
+                  state = "No — format/data integrity preserved"
+              rows.append(f"| `{item}` | {purpose(item).replace('|', '\\|')} | {state} |")
+          rows.append("")
+          inventory.write_text("\n".join(rows), encoding="utf-8")
+
+          print(f"Added or confirmed inline comments in {len(changed)} files.")
+          print(f"Documented {len(skipped)} non-commentable files in docs/FILE-COMMENTS.md.")
+          PY
+
+      - name: Validate update
+        run: |
+          npm ci
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+
+      - name: Commit update to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'update'
+          git push origin HEAD:main
