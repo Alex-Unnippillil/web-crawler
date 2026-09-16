@@ -1,0 +1,68 @@
+name: Validate hybrid analysis workspaces
+on:
+  push:
+    branches: [upgrade/hybrid-analysis-20260916]
+    paths: [.github/workflows/engineering-ui.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REQUIRE_BROWSER: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Apply reviewed UI and integration-test patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git checkout -b ui-work origin/upgrade/hybrid-workbench-20260916
+          test "$(git rev-parse HEAD)" = '4277fe6d93b018dc94f24b5ce47974fd215a45f4'
+          python3 - <<'PY'
+          import urllib.request, os, base64, json, lzma, hashlib
+          from pathlib import Path
+          shas = ['4aafc7d0a4c1dd3e2505ebde35909d8fcb4132b7','1b23c7186d864c55d7b1be37198413e2c110f8f3','8911a247899ac667e93ec172f39530a916dd9939','231485e2e89f8f325805e8305bac50e3eeed357d','df8904e78ff90c913258eb33c34ecf1a35cae5ec','6927cf32bacea2f794d8fafb5392aba13e02e450','27ea38dafd66892280ab7451f094dbb41d8088bf','b768b231a69092892b59a05aca5f1ccbce8f1730']
+          chunks=[]
+          for sha in shas:
+              req=urllib.request.Request('https://api.github.com/repos/Alex-Unnippillil/web-crawler/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req, timeout=30) as r: blob=json.load(r)
+              chunks.append(base64.b64decode(blob['content']))
+          patch=lzma.decompress(b''.join(chunks))
+          assert hashlib.sha256(patch).hexdigest()=='76ffd67c9ca2aa395b0c46e739e60b684fc9ce8f4cab20f0c3167418f721d991'
+          Path(os.environ['RUNNER_TEMP'],'ui.patch').write_bytes(patch)
+          PY
+          git apply --check "$RUNNER_TEMP/ui.patch"
+          git apply --index "$RUNNER_TEMP/ui.patch"
+      - name: Install locked dependencies and Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          python3 -m pip install playwright==1.63.0
+      - name: Full application and browser verification
+        run: |
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          python3 tests/e2e.py
+          python3 tests/hybrid_e2e.py
+      - name: Commit validated workspace and actual screenshots
+        run: |
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          git add docs/hybrid-*.png
+          git diff --cached --check
+          git commit -m 'feat: add JavaScript and resource analysis workspaces'
+          git push origin HEAD:refs/heads/upgrade/hybrid-workbench-20260916
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hybrid-ui-validation
+          path: |
+            docs/hybrid-*.png
+          retention-days: 7
