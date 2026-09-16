@@ -8,6 +8,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { browserAvailability } from '../crawler/browser.js';
 import { MediaPreviews } from './media.js';
 import { Jobs } from './jobs.js';
 import { renderCSV, renderHTML, renderGraph } from '../report.js';
@@ -42,6 +43,7 @@ function openBrowser(url: string): void {
 }
 export async function startStudio(config: { port?: number; directory?: string; open?: boolean; hooks?: CrawlHooks; assets?: string } = {}) {
   const media = new MediaPreviews();
+  let browserState = await browserAvailability();
   const token = randomBytes(32).toString('hex');
   const store = new Jobs(config.directory ?? process.env.CRAWLER_DATA_DIR ?? join(homedir(), '.web-crawler-studio'), config.hooks);
   await store.init();
@@ -61,9 +63,10 @@ export async function startStudio(config: { port?: number; directory?: string; o
         const received = Buffer.from(String(req.headers['x-crawler-token'] ?? ''));
         const secret = Buffer.from(token);
         if (received.length !== secret.length || !timingSafeEqual(received, secret)) { send(res, 403, { error: 'Session expired. Refresh this page.' }); return; }
-        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.0.0' }); return; }
+        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.1.0', browser: browserState }); return; }
         if (url.pathname === '/api/jobs' && req.method === 'POST') { send(res, 201, await store.start(await body(req))); return; }
-        const match = /^\/api\/jobs\/([a-f0-9-]{36})(?:\/(pause|resume|stop|export|image))?$/.exec(url.pathname);
+        if (url.pathname === '/api/browser' && req.method === 'GET') { browserState = await browserAvailability(); send(res, 200, browserState); return; }
+        const match = /^\/api\/jobs\/([a-f0-9-]{36})(?:\/(pause|resume|stop|export|image|evidence))?$/.exec(url.pathname);
         if (match) {
           const id = match[1]!; const action = match[2];
           if (!action && req.method === 'GET') {
@@ -75,6 +78,15 @@ export async function startStudio(config: { port?: number; directory?: string; o
           }
           if (!action && req.method === 'DELETE') { await store.delete(id); send(res, 200, { ok: true }); return; }
           if (action && ['pause', 'resume', 'stop'].includes(action) && req.method === 'POST') { send(res, 200, store.control(id, action)); return; }
+          if (action === 'evidence' && req.method === 'GET') {
+            const evidence = await store.evidence(id, url.searchParams.get('url') ?? '');
+            if (url.searchParams.get('format') === 'screenshot') {
+              if (!evidence.screenshot) throw new Error('Screenshot not found.');
+              const bytes = Buffer.from(evidence.screenshot, 'base64');
+              res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': bytes.length }); res.end(bytes);
+            } else { const { screenshot: _screenshot, ...record } = evidence; send(res, 200, record); }
+            return;
+          }
           if (action === 'image' && req.method === 'GET') {
             const job = await store.get(id);
             const image = await media.load(job, url.searchParams.get('url') ?? '');
@@ -110,6 +122,13 @@ export async function startStudio(config: { port?: number; directory?: string; o
         '/atlas-graph.js': ['ui-dist/atlas-graph.js', 'text/javascript'],
         '/atlas-elements.js': ['ui-dist/atlas-elements.js', 'text/javascript'],
         '/atlas-shared.js': ['ui-dist/atlas-shared.js', 'text/javascript'],
+        '/workbench.js': ['ui-dist/workbench.js', 'text/javascript'],
+        '/workbench-model.js': ['ui-dist/workbench-model.js', 'text/javascript'],
+        '/source-diff.js': ['ui-dist/source-diff.js', 'text/javascript'],
+        '/inspector.js': ['ui-dist/inspector.js', 'text/javascript'],
+        '/profiles.js': ['ui-dist/profiles.js', 'text/javascript'],
+        '/telemetry.js': ['ui-dist/telemetry.js', 'text/javascript'],
+        '/workbench.css': ['ui/workbench.css', 'text/css'],
         '/atlas.css': ['ui/atlas.css', 'text/css'],
       };
       const file = staticFiles[url.pathname];

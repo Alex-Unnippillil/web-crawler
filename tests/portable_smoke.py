@@ -63,9 +63,17 @@ with tempfile.TemporaryDirectory(prefix='crawler-portable-') as temporary:
         bundled = json.loads((root / 'package.json').read_text())['version']
         assert bundled == expected, f'Archive {bundled} differs from source {expected}'
         assert json.loads(api('/api/state'))['version'] == bundled
+        # Optional browser installation must use the bundled CLI, not globally installed npm.
+        assert (root / 'Install Browser.cmd').is_file() and (root / 'install-browser.sh').is_file()
+        cli_version = subprocess.check_output([str(runtime), 'node_modules/playwright/cli.js', '--version'], cwd=root, text=True)
+        assert cli_version.startswith('Version '), cli_version
+        browser_state = json.loads(api('/api/browser'))
+        assert isinstance(browser_state['installed'], bool), browser_state
         for asset in ('/app.js', '/styles.css', '/favicon.svg', '/atlas.js',
                       '/atlas-model.js', '/atlas-graph.js', '/atlas-elements.js',
-                      '/atlas-shared.js', '/atlas.css'):
+                      '/atlas-shared.js', '/atlas.css', '/inspector.js', '/profiles.js',
+                      '/source-diff.js', '/telemetry.js', '/workbench-model.js',
+                      '/workbench.js', '/workbench.css'):
             with urllib.request.urlopen(url + asset, timeout=10) as response:
                 assert response.status == 200 and response.read()
         job = json.loads(api('/api/jobs', 'POST', {'demo': True}))

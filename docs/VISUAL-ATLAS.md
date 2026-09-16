@@ -73,3 +73,7 @@ Version 3 histories still open. Their image/link URLs remain usable, while missi
 ## Tests
 
 `npm run check` includes analysis, route, layout, extraction, API, and preview security tests. `python3 tests/e2e.py` runs both the original GUI flow and `tests/atlas_e2e.py` against the actual application and local HTTP fixtures. Real-browser captures are written into `docs/`. See workflow results for the commit being used; test source alone is not evidence of a passing run.
+
+## Hybrid inspection integration
+
+The [hybrid upgrade](HYBRID.md) adds rendering-method and sitemap filters to the Atlas, browser/sitemap node badges, and links from inspection workspaces. A sitemap page with no captured incoming link is not necessarily an orphan on the entire website. The page inspector adds raw/rendered source, a bounded text diff, screenshot, schema, headers, JavaScript changes, and observed network timing. These complement the URL-path tree and opt-in image gallery rather than replacing them.

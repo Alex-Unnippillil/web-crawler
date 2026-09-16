@@ -13,6 +13,14 @@ Usage:
   node dist/index.js <URL> [options]
 
 Options:
+  --mode MODE             http (default), smart, or browser
+  --browser-workers N    Chromium contexts (default 2; maximum 4)
+  --render-timeout-ms N  Bounded rendering deadline (default 15000)
+  --scroll-iterations N  Bounded lazy-content discovery (0-8; default 0)
+  --sitemaps             Discover robots/sitemap.xml entries
+  --sitemap URL          Additional same-origin sitemap
+  --no-screenshots       Do not capture rendered viewport screenshots
+  --adaptive             Reduce page workers under high Node memory pressure
   --concurrency N         Active page workers (default 3; maximum 32)
   --max-pages N           Candidate URL budget, including failed URLs (default 50)
   --max-depth N           Discovery depth limit; root is 0 (default 10)
@@ -34,9 +42,10 @@ Options:
 Outputs: JSON page array, CSV, HTML dashboard, SVG link map, summary JSON.
 Exit codes: 0 = pages collected; 1 = failure/strict incomplete run; 2 = bad arguments;
             130 = SIGINT; 143 = SIGTERM. Deadlines return 1 and save partial results.
-Only HTTP(S); credentials in URLs are rejected. No login or JavaScript rendering.
+Only HTTP(S); credentials in URLs are rejected. Browser modes require npm run browser:install. No login, form submission or challenge bypass.
 `;
 const numeric: Record<string, keyof CrawlOptions> = {
+  'browser-workers': 'browserConcurrency', 'render-timeout-ms': 'renderTimeoutMs', 'scroll-iterations': 'scrollIterations',
   concurrency: 'maxConcurrency', 'max-pages': 'maxPages', 'max-depth': 'maxDepth',
   'timeout-ms': 'timeoutMs', retries: 'retries', 'delay-ms': 'delayMs',
   'max-duration-ms': 'maxDurationMs', 'max-body-bytes': 'maxBodyBytes', 'max-query-variants': 'maxQueryVariants',
@@ -44,8 +53,8 @@ const numeric: Record<string, keyof CrawlOptions> = {
 export interface CLIConfig { help: boolean; url: string; options: CrawlOptions; output: string; strict: boolean; quiet: boolean }
 export function parseCLI(args: string[]): CLIConfig {
   const definitions: Record<string, { type: 'string' | 'boolean' }> = {};
-  for (const key of [...Object.keys(numeric), 'path-prefix', 'user-agent', 'out']) definitions[key] = { type: 'string' };
-  for (const key of ['help', 'strip-tracking', 'no-robots', 'strict', 'quiet']) definitions[key] = { type: 'boolean' };
+  for (const key of [...Object.keys(numeric), 'path-prefix', 'user-agent', 'out', 'mode', 'sitemap']) definitions[key] = { type: 'string' };
+  for (const key of ['help', 'strip-tracking', 'no-robots', 'strict', 'quiet', 'sitemaps', 'no-screenshots', 'adaptive']) definitions[key] = { type: 'boolean' };
   const { values, positionals } = parseArgs({ args, options: definitions, allowPositionals: true, strict: true });
   if (values.help) return { help: true, url: '', options: validateOptions({}), output: 'report.json', strict: false, quiet: false };
   if (![1, 3].includes(positionals.length)) throw new Error('Provide a URL, optionally followed by concurrency and maxPages. Use --help for examples.');
@@ -61,6 +70,11 @@ export function parseCLI(args: string[]): CLIConfig {
   for (const [flag, key] of Object.entries(numeric)) if (values[flag] !== undefined) Object.assign(options, { [key]: number(flag, values[flag]) });
   if (typeof values['path-prefix'] === 'string') options.pathPrefix = values['path-prefix'];
   if (typeof values['user-agent'] === 'string') options.userAgent = values['user-agent'];
+  if (typeof values.mode === 'string') options.mode = values.mode as CrawlOptions['mode'];
+  if (typeof values.sitemap === 'string') options.sitemapURLs = [values.sitemap];
+  options.discoverSitemaps = values.sitemaps === true || typeof values.sitemap === 'string';
+  options.captureScreenshots = values['no-screenshots'] !== true;
+  options.adaptiveConcurrency = values.adaptive === true;
   options.stripTracking = values['strip-tracking'] === true;
   options.respectRobots = values['no-robots'] !== true;
   const output = typeof values.out === 'string' ? values.out : 'report.json';

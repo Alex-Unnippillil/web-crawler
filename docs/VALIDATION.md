@@ -38,3 +38,19 @@ Workflow conclusions and logs are the source of truth for each commit and releas
 Initial local checks used fixture-specific parsers for the core and API tests because npm network access was unavailable in that execution environment. Local visual checks used the compiled interface with a loopback-only test bridge. Those narrower checks are not substituted for the successful full-parser, normal-origin candidate validation above.
 
 macOS archives are assembled using the official runtime for each architecture; archive creation and source CI are not the same as a complete native portable GUI acceptance test on each Mac architecture. Builds are unsigned and not notarized. Automated checks do not establish universal accessibility, SEO completeness or security certification.
+
+## Hybrid Workbench 4.1.0 release preparation
+
+The reviewed feature commit `f513bb871dc4cf06b98fb649ce18b1b9327d880b` passed [Windows, macOS and Ubuntu browser/HTTP/API checks](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35162075652) and [four portable archive builds plus native Windows/Linux acceptance](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35162075656) before the additive 4.1.0 version was selected. The version metadata is validated again in PR #6 before merging. The main-branch release pipeline independently verifies the final versioned archives before publication.
+
+Cross-platform testing found an unhandled reset on the deny proxy's accepted sockets. Each socket now owns its error/timeout/close lifecycle; shutdown explicitly destroys CONNECT sockets. Two regression tests exercise connection reset containment and CONNECT denial without changing the network policy. There is no global uncaught-exception suppression.
+
+## Hybrid inspection engineering pass
+
+The local candidate passed `npm run check` with **23 Vitest tests and 167 Node tests**, the original real-parser CLI demo, five POSIX monitoring tests, the existing GUI/Atlas end-to-end suite and the new hybrid GUI suite. `REQUIRE_BROWSER=1` makes missing Chromium a failure rather than silently skipping browser acceptance. Browser tests use controlled local HTTP fixtures only.
+
+New coverage includes all three modes, Smart escalation/non-escalation, client-side redirects, lazy content, same-origin frames, open shadow roots, malicious/private destinations, non-GET/WebSocket blocking, bounded response aggregation, source/evidence storage/deletion, cancellation with queued resources, browser-context cleanup, restart persistence, CSS-selector errors, profile import/export/delete, sitemap indexes/robots, source diff limits and the 1,000-page scale fixture.
+
+Actual new screenshots are captured by `tests/hybrid_e2e.py` at 1,600, 1,280, 900 and 390 pixels. Both old and new browser suites recorded no JavaScript console/page errors in the validated local run. Fixtures intentionally include errors; findings are not fabricated results from external websites. The container browser factory's root-only test sandbox override is not part of the production user-facing API.
+
+The feature PR's normal cross-platform CI and final merged workflow conclusions are authoritative for the published revision. Local measurements and their limitations are in [PERFORMANCE.md](PERFORMANCE.md); feature boundaries are in [HYBRID.md](HYBRID.md).

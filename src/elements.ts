@@ -42,10 +42,11 @@ export function extractElements(doc: Document, pageURL: string): PageElements {
     const urls = [...new Set(candidates.map(resolve).filter(Boolean))].slice(0, 50);
     const dimension = (name: string): number | null => { const v = Number(el.getAttribute(name)); return Number.isFinite(v) && v > 0 ? Math.min(v, 100000) : null; };
     return { src: urls[0] ?? '', candidates: urls, alt: el.hasAttribute('alt') ? clean(el.getAttribute('alt')) : null,
+      title: clean(el.getAttribute('title')), srcset: clean(el.getAttribute('srcset'), 4000),
       width: dimension('width'), height: dimension('height'), loading: clean(el.getAttribute('loading'), 30) };
   }).filter(el => el.src);
   const links = take('a[href],area[href]').map(el => ({ url: resolve(el.getAttribute('href')), text: clean(el.textContent || el.getAttribute('alt')),
-    rel: clean(el.getAttribute('rel'), 200), target: clean(el.getAttribute('target'), 50) })).filter(el => el.url);
+    title: clean(el.getAttribute('title')), discovery: 'raw' as const, rel: clean(el.getAttribute('rel'), 200), target: clean(el.getAttribute('target'), 50) })).filter(el => el.url);
   const resources: ResourceElement[] = [];
   for (const el of take('script[src],link[href],video[src],video[poster],audio[src],source[src],iframe[src],embed[src],object[data]')) {
     const tag = el.tagName.toLowerCase();
@@ -65,8 +66,8 @@ export function extractElements(doc: Document, pageURL: string): PageElements {
   const forms = take('form').map(el => {
     const controls = el.querySelectorAll('input,select,textarea,button');
     if (controls.length > 100) truncated = true;
-    return { action: el.getAttribute('action') ? resolve(el.getAttribute('action')) : pageURL, method: clean(el.getAttribute('method') || 'GET', 20).toUpperCase(),
-      fields: Array.from(controls).slice(0, 100).map(field => ({ tag: field.tagName.toLowerCase(), type: clean(field.getAttribute('type') || (field.tagName === 'INPUT' ? 'text' : field.tagName === 'BUTTON' ? 'submit' : field.tagName.toLowerCase()), 50), name: clean(field.getAttribute('name'), 100) })) };
+    return { enctype: clean(el.getAttribute('enctype') || 'application/x-www-form-urlencoded', 100), action: el.getAttribute('action') ? resolve(el.getAttribute('action')) : pageURL, method: clean(el.getAttribute('method') || 'GET', 20).toUpperCase(),
+      fields: Array.from(controls).slice(0, 100).map(field => ({ tag: field.tagName.toLowerCase(), type: clean(field.getAttribute('type') || (field.tagName === 'INPUT' ? 'text' : field.tagName === 'BUTTON' ? 'submit' : field.tagName.toLowerCase()), 50), name: clean(field.getAttribute('name'), 100), required: field.hasAttribute('required'), autocomplete: clean(field.getAttribute('autocomplete'), 100), label: clean((field as HTMLInputElement).labels?.[0]?.textContent ?? field.getAttribute('aria-label'), 200) })) };
   });
   return { headings, images, links, resources: resources.slice(0, ELEMENT_LIMIT), forms, truncated,
     language: clean(doc.documentElement.lang, 40), robots: clean(doc.querySelector('meta[name="robots" i]')?.getAttribute('content'), 500) };

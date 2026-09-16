@@ -1,6 +1,9 @@
 // Repository note: Manages GUI crawl jobs, checkpoints, history, controls, and exports.
 // Manages GUI crawl jobs, pause/resume/stop controls, checkpoints, history, and exports.
 
+import { EvidenceStore } from './evidence.js';
+import { startHybridDemoSite } from './hybrid-demo.js';
+import { browserAvailability } from '../crawler/browser.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, readFile, writeFile, rename, unlink, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -15,7 +18,7 @@ import type { CrawlResult, CrawlOptions, CrawlHooks } from '../types.js';
 export type JobStatus = 'running' | 'paused' | 'stopping' | 'completed' | 'stopped' | 'failed' | 'interrupted';
 export interface JobMeta {
   id: string; name: string; url: string; demo: boolean; status: JobStatus; createdAt: string;
-  demoMode?: 'basic' | 'atlas';
+  demoMode?: 'basic' | 'atlas' | 'hybrid';
   finishedAt?: string; revision: number; pages: number; failures: number; durationMs: number;
   options: CrawlOptions; message?: string;
 }
@@ -79,37 +82,47 @@ export class Jobs {
     if (this.metadata.size >= 30) throw new Error('History holds up to 30 crawls. Export and delete an old crawl first.');
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid crawl configuration.');
     const input = body as Record<string, unknown>;
+    if (typeof input.hybrid !== 'undefined' && typeof input.hybrid !== 'boolean') throw new Error('hybrid must be a boolean.');
     if (typeof input.atlas !== 'undefined' && typeof input.atlas !== 'boolean') throw new Error('atlas must be a boolean.');
     if (typeof input.demo !== 'undefined' && typeof input.demo !== 'boolean') throw new Error('demo must be a boolean.');
     const raw = input.options ?? {};
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid options.');
-    const options = validateOptions({ ...(raw as Partial<CrawlOptions>), respectRobots: true, userAgent: 'CrawlerStudio/4.0', maxLinksPerPage: 500, maxBodyBytes: 2 * 1024 * 1024 });
-    if (options.maxPages > 500 || options.maxConcurrency > 8 || options.delayMs < 100 || options.maxDurationMs > 3600000) {
-      throw new Error('GUI limits: 500 URLs, 8 workers, at least 100 ms between requests, and a 60-minute deadline.');
+    const options = validateOptions({ mode: input.demo === true && !input.hybrid ? 'http' : 'smart', discoverSitemaps: input.demo === true && !input.hybrid ? false : true, ...(raw as Partial<CrawlOptions>), respectRobots: true, userAgent: 'CrawlerStudio/4.0', maxLinksPerPage: 500, maxBodyBytes: 2 * 1024 * 1024 });
+    if (options.maxPages > 2000 || options.maxConcurrency > 8 || options.delayMs < 100 || options.maxDurationMs > 3600000) {
+      throw new Error('GUI limits: 2000 URLs, 8 workers, at least 100 ms between requests, and a 60-minute deadline.');
+    }
+    if (options.mode === 'browser' && !this.testHooks.browserFactory) {
+      const browser = await browserAvailability(); if (!browser.installed) throw new Error(browser.message);
     }
     this.starting = true;
     let demo: Awaited<ReturnType<typeof startDemoSite>> | undefined;
     try {
-      if (input.demo === true) demo = input.atlas === true ? await startAtlasDemoSite() : await startDemoSite();
+      if (input.demo === true) demo = input.hybrid === true ? await startHybridDemoSite() : input.atlas === true ? await startAtlasDemoSite() : await startDemoSite();
       const url = demo?.url ?? httpURL(String(input.url ?? ''));
       if (url.length > 2048) throw new Error('URL is too long.');
       const job: Job = {
-        id: randomUUID(), name: typeof input.name === 'string' && input.name.trim() ? input.name.trim().slice(0, 100) : demo ? (input.atlas === true ? 'Fieldnotes · visual atlas demo' : 'Fieldnotes · local demo') : new URL(url).hostname,
-        url, demo: !!demo, demoMode: demo ? (input.atlas === true ? 'atlas' : 'basic') : undefined, status: 'running', createdAt: new Date().toISOString(), revision: 0,
+        id: randomUUID(), name: typeof input.name === 'string' && input.name.trim() ? input.name.trim().slice(0, 100) : demo ? (input.hybrid === true ? 'Fieldnotes · hybrid inspection lab' : input.atlas === true ? 'Fieldnotes · visual atlas demo' : 'Fieldnotes · local demo') : new URL(url).hostname,
+        url, demo: !!demo, demoMode: demo ? (input.hybrid === true ? 'hybrid' : input.atlas === true ? 'atlas' : 'basic') : undefined, status: 'running', createdAt: new Date().toISOString(), revision: 0,
         pages: 0, failures: 0, durationMs: 0, options, logs: [],
       };
       this.current = job; this.controller = new AbortController(); this.changed(job); this.save(job);
       const localDemo = demo;
-      const measured = new Set<string>(); let capturedBytes = 0;
+      const evidence = new EvidenceStore(join(this.directory, `${job.id}.evidence`));
+      let capturedBytes = 0;
       this.completion = runCrawl(url, options, {
         ...this.testHooks, signal: this.controller.signal,
-        fetchImpl: localDemo ? fetch : this.testHooks.fetchImpl ?? publicFetch,
+        fetchImpl: localDemo ? ((input, init) => {
+          const target = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+          return target.origin === new URL(localDemo.url).origin ? fetch(input, init) : publicFetch(input, init);
+        }) : this.testHooks.fetchImpl ?? publicFetch,
+        onEvidence: (pageURL, record) => evidence.save(pageURL, record),
         onLog: message => { job.logs.push(`${new Date().toISOString().slice(11, 19)}  ${message}`); if (job.logs.length > 250) job.logs.shift(); },
+        onPage: page => {
+          capturedBytes += Buffer.byteLength(JSON.stringify(page));
+          if (capturedBytes > 32 * 1024 * 1024) this.controller?.abort(new Error('The GUI page-record budget (32 MiB) was reached. Results were saved.'));
+        },
         onProgress: result => {
           job.result = result;
-          for (const [key, page] of Object.entries(result.pages)) if (!measured.has(key)) {
-            measured.add(key); capturedBytes += Buffer.byteLength(JSON.stringify(page));
-          }
           if (capturedBytes > 32 * 1024 * 1024) this.controller?.abort(new Error('The GUI result budget (32 MiB of page records) was reached. Export these partial results, then narrow the scope.'));
           this.changed(job);
         },
@@ -125,10 +138,15 @@ export class Jobs {
         job.status = result.summary.stopped ? 'stopped' : result.summary.pages_crawled ? 'completed' : 'failed';
         if (job.status === 'failed') job.message = result.errors[0]?.message ?? 'No HTML pages were collected. Check the URL, robots.txt policy and network connection.';
       }).catch(error => { job.status = 'failed'; job.message = error instanceof Error ? error.message : String(error); })
-        .finally(async () => { localDemo?.close(); job.finishedAt = new Date().toISOString(); this.changed(job); this.save(job); await this.saves; });
+        .finally(async () => { localDemo?.close(); await evidence.close(); job.finishedAt = new Date().toISOString(); this.changed(job); this.save(job); await this.saves; });
       return job;
     } catch (error) { demo?.close(); throw error; }
     finally { this.starting = false; }
+  }
+  async evidence(id: string, pageURL: string) {
+    const job = await this.get(id); const artifact = job.result?.pages[pageURL]?.rendering?.artifact_id;
+    if (!artifact) throw new Error('No stored rendering evidence for this page.');
+    return new EvidenceStore(join(this.directory, `${id}.evidence`)).read(artifact);
   }
   control(id: string, action: string): Job {
     const job = this.current;
@@ -144,6 +162,7 @@ export class Jobs {
     if (this.current?.id === id && this.busy()) throw new Error('Stop the active crawl before deleting it.');
     await this.saves;
     for (const suffix of ['.json', '.meta.json']) await unlink(join(this.directory, `${id}${suffix}`)).catch(e => { if (e.code !== 'ENOENT') throw e; });
+    await new EvidenceStore(join(this.directory, `${id}.evidence`)).delete();
     this.metadata.delete(id); if (this.current?.id === id) this.current = undefined;
   }
   async close(): Promise<void> { this.controller?.abort(new Error('Application closed. Partial results were saved.')); await this.completion; await this.saves; }

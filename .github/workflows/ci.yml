@@ -1,4 +1,4 @@
-# Repository note: Runs cross-platform validation for crawler and GUI changes.
+# Repository note: Tests crawler modes, the GUI and security boundaries on three operating systems.
 name: Validate crawler and GUI
 on:
   push:
@@ -13,26 +13,52 @@ concurrency:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      # Browser coverage must fail, not silently skip, when Chromium is missing.
+      REQUIRE_BROWSER: '1'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run check
-      - run: npm run demo
-      - name: POSIX monitoring helper tests (Linux, WSL and macOS)
+      - name: Install Chromium and Linux libraries
+        if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium
+      - name: Install Chromium
+        if: runner.os != 'Linux'
+        run: npx playwright install chromium
+      - name: Prepare sandboxed Chromium on the disposable Linux runner
+        if: runner.os == 'Linux'
+        run: bash .github/prepare-browser-ci.sh
+      - name: Type checks and all HTTP, browser, parser and API tests
+        run: npm run check
+      - name: Exercise the original CLI
+        run: npm run demo
+      - name: POSIX monitoring tests
         if: runner.os != 'Windows'
         run: python -m unittest discover -s tests -p 'test_*.py'
-      - if: runner.os == 'Linux'
+      - name: Real GUI acceptance and measured 1000-page fixture
+        if: runner.os == 'Linux'
         run: |
-          python3 -m pip install playwright
-          python3 -m playwright install --with-deps chromium
+          python3 -m pip install playwright==1.63.0
           python3 tests/e2e.py
+          python3 tests/hybrid_e2e.py
+          node tests/scale.mjs 1000 > "$RUNNER_TEMP/scale.json"
+      - name: Preserve actual screenshots and scale measurements
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gui-and-scale-${{ github.run_id }}
+          path: |
+            docs/hybrid-*.png
+            ${{ runner.temp }}/scale.json
+          retention-days: 7

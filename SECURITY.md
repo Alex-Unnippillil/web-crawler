@@ -1,35 +1,46 @@
-<!-- Repository note: Documents the local security model, reporting guidance, and crawler safety boundaries. -->
+<!-- Repository note: Trust boundaries, storage privacy, and bounded browser operation. -->
 # Security model
 
-Web Crawler Studio is a **single-user local application**, not an internet-facing service.
+Web Crawler Studio is a **single-user local application**, not a public crawling API or a safe multi-tenant execution service. The browser engine deliberately executes untrusted website JavaScript in sandboxed Chromium; the application interface never trusts that content as its own markup.
 
-## GUI protections
+## Local application boundary
 
-- Binds only to `127.0.0.1`; accepts the matching `localhost`/`127.0.0.1` Host header.
-- Uses a random per-process token for every API request. No permissive CORS. Cross-site and foreign-Origin requests are denied. Reload the page after a server restart.
-- Checks public IP eligibility and pins the DNS answer used by each outbound request. Reserved, private, loopback, mapped-private IPv6 and common transition ranges are denied. The built-in demo is the only GUI exception; it is a server-owned fixture, not a user-chosen private URL.
-- Follows redirects manually inside the configured origin/path and repeats outbound address validation.
-- Enforces robots policy, request/body/deadline budgets and GUI result limits. Paused crawls still have deadlines.
-- Parses remote HTML without scripts/subresource loading. UI text is escaped and external links are restricted to HTTP(S). Remote image URLs are shown as text, never embedded.
-- Ships no remote UI scripts/fonts, analytics or cloud services. CSV exports escape formula-like strings.
-- Stores data under the current OS account with restrictive modes where supported; writes snapshots through temporary files and atomic renames. Up to 30 histories are retained until the user deletes them.
+The server listens on `127.0.0.1`, validates Host and Origin, rejects cross-site requests, and requires an unpredictable per-process session token on API requests. Static files are allowlisted. The Content Security Policy, frame restrictions, no-store responses and no-referrer policy remain enabled. Do not rebind the server or place it behind a publicly accessible proxy.
 
-## Not covered
+HTTP crawling, image previews and browser-intercepted requests use the GUI's public-address checks and DNS-pinned transport. Private/reserved IPv4/IPv6, unsafe schemes, credential-bearing URLs and unsafe redirect destinations are rejected. The built-in demonstration has an explicit exact-loopback-origin exception created by the app, not a general permission to crawl local services. The developer CLI is not a substitute for this GUI boundary.
 
-Other processes running as the same OS user may read history and the local session. Local filesystem tampering is outside this single-user trust boundary. Browser extensions and the OS are trusted. There is no multi-user authorization, encryption-at-rest, code signing, or notarization. Do not bind this server publicly or place it behind a public reverse proxy.
+## Chromium boundary
 
-Target sites see your IP address and crawler requests. Extracted pages and URL query strings may contain sensitive data. Review exports before sharing. Basic content checks are not a vulnerability assessment.
+Production launches explicitly enable the Chromium sandbox. Do not run Studio as root. There is no user-facing switch that disables TLS verification or the browser sandbox. Browser tests may inject a fixture-only browser factory in a root-owned isolated test container; the production launcher/API never accepts that hook from user input.
 
-The original CLI may deliberately access authorized private development sites and does not use the GUI public-IP transport. Never wrap it in an unauthenticated remote API. TLS verification is not disabled in either path.
+One browser is reused with bounded isolated contexts; pages/contexts/listeners are closed after each render, cancellation and shutdown. Contexts are recycled rather than sharing a user's browser profile. Only cookies generated during that page context may be used for same-origin requests; credentials or profiles are not imported.
 
-## Reporting
+All intercepted traffic is GET-only and fulfilled through the guarded Node transport. Non-GET traffic, form submissions, downloads, permissions, service workers and WebSockets are blocked. Document/frame navigation is additionally same-origin, path-boundary and robots checked. Resource requests may target public external hosts and are accounted for separately; discovered API endpoints are **not** automatically added to the page frontier.
 
-For a suspected vulnerability, avoid including credentials, private crawl output, or a working exploit against a third-party site in a public issue. Use the repository's private security reporting channel when enabled; otherwise contact the maintainer through their GitHub profile to arrange a private disclosure.
+Route interception alone is not treated as a complete network firewall. Chromium uses a deny-by-default local proxy (including loopback bypass suppression), blocked fallback DNS, disabled QUIC and restricted non-proxied WebRTC. Manual document redirects are restarted as checked navigations to avoid Chromium's un-intercepted redirect follow-up behavior. The final rendered URL is checked again after client-side navigation. Negative tests exercise private targets, redirect chains, WebSockets, forms and cancellation.
 
-## Visual Atlas image previews
+These controls are defense in depth, not an independent security certification. Browser vulnerabilities and unrecognized transport behavior remain possible. Do not inspect hostile sites from a machine holding valuable credentials; use an appropriately isolated OS environment for higher-risk targets. Browser resource support is intentionally narrower than a normal authenticated browsing session.
 
-Previews are opt-in and separate from crawl request budgets. The authenticated image API accepts only recorded image URLs, checks public destinations with DNS-pinned requests, rechecks redirects, and does not forward cookies or referrers. Only signature-checked raster responses are returned, up to 4 MiB, four server requests at a time, with a 10-second timeout. SVG and HTML are rejected. The locally generated demo artwork is an allowlisted exception tied to that saved demo origin, not an arbitrary localhost proxy.
+## Bounded resource use
 
-Previewing public CDN images contacts those hosts and exposes the requesting machine's network address. Closing a view prevents additional queued requests, not requests already started. Browser image decoders still handle untrusted bytes; encoded-byte limits are not decoded-pixel or memory guarantees. Keep the bundled runtime and browser updated.
+The GUI enforces candidate, depth, duration, concurrency, response-size and record budgets. A browser render has separate request-count, aggregate decoded-response-byte, per-response-byte, navigation/settling deadline, source-size, screenshot-size, context-extraction and finite-scroll limits. Source/shot evidence is stored separately: at most 8 MiB per record and 128 MiB per run, using atomic writes and restrictive permissions where supported.
 
-Element extraction collects static markup attributes and bounded text, not form values or script contents. It does not submit forms, execute JavaScript, or embed frames/audio/video. Extracted text, URLs and names may still be sensitive; review exports before sharing.
+The telemetry memory number is **Node RSS only**, not combined Chromium-process RSS. Memory-aware scheduling reduces page concurrency above a soft Node threshold; Chromium's JavaScript heap flag is not a hard total browser-memory cap. Screenshots/DOM/body caps do not prevent every renderer allocation. For untrusted large sites use conservative settings and external OS/container resource limits. There is no claim of arbitrary-scale or denial-of-service-proof crawling.
+
+## Untrusted content and local evidence
+
+Fast HTTP parses documents in an inert jsdom realm without enabling script execution or external resource loading. Each parse gets a fresh detached document and resolves URLs explicitly against its own page/base URL. Browser rendering is the only production path that executes page scripts.
+
+Rendered HTML, extracted HTML, JSON-LD and console messages are shown as text, not inserted into the application as trusted HTML. Source comparison is bounded. Screenshots are captured raster images, not live page embeds. External SVG previews remain prohibited; opt-in raster previews still use the guarded, bounded transport and local LRU cache. CSV exporters neutralize formula-leading text and HTML/SVG exporters escape values.
+
+Saved crawl records, raw/rendered source, JSON-LD, console logs, screenshots and URLs may contain sensitive or copyrighted website information. Authorization/cookie response headers are not part of the inspector's allowlisted HTTP-header collection, and browser request headers are not logged. This does **not** guarantee that websites will never put sensitive values in HTML, URLs or console output. Review evidence before exporting/sharing.
+
+Evidence filenames are derived from URL hashes, reads validate identifiers and sizes, and deletions operate within the run's own directory. Source data is never committed automatically. History lives in the OS user's data directory; profiles/views live in browser local storage. The token and environment secrets must never enter Git. Use disk encryption/OS account controls where appropriate.
+
+## Responsible use and limitations
+
+Use sites you own or have permission to crawl, respect robots rules and rate limits, and do not collect private/authenticated information without authorization. This application has no CAPTCHA solving, challenge bypass, credential attacks, TLS disabling or anti-bot evasion. JavaScript applications requiring POST APIs, WebSockets, service workers or cross-origin frames can remain incomplete by design.
+
+Builds are unsigned and not notarized. SHA-256 sidecars detect mismatched downloads; they do not prove publisher identity. Browser installation is an explicit network download and may require administrator-approved OS dependencies/sandbox configuration. Never weaken system protections automatically to make tests or a crawl pass.
+
+For a suspected vulnerability, contact the repository owner privately where possible; do not publish secrets, private URLs or exploitable details before coordinated remediation.

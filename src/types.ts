@@ -1,3 +1,4 @@
+import type { CrawlMode, ExtractionRule, PageInspection, HttpInspection, RenderingInfo, BrowserEvidence, DiscoveryInfo, CrawlTelemetry } from "./inspection-types.js";
 // Repository note: Defines shared TypeScript contracts for pages, failures, options, progress, and results.
 // Shared TypeScript contracts for crawl results, failures, progress events, and configuration.
 
@@ -13,27 +14,32 @@ export interface ExtractedPageData {
 export interface ImageElement {
   src: string; candidates: string[]; alt: string | null;
   width: number | null; height: number | null; loading: string;
+  title?: string; srcset?: string; context?: string; rendered_width?: number; rendered_height?: number;
 }
 export interface ResourceElement {
   kind: 'script' | 'stylesheet' | 'video' | 'audio' | 'frame' | 'document' | 'poster' | 'other';
-  url: string; type: string;
+  url: string; type: string; context?: string;
 }
 export interface PageElements {
   headings: { level: number; text: string; id: string }[];
   images: ImageElement[];
-  links: { url: string; text: string; rel: string; target: string }[];
+  links: { url: string; text: string; rel: string; target: string; title?: string; context?: string; discovery?: 'raw' | 'rendered' }[];
   resources: ResourceElement[];
-  forms: { action: string; method: string; fields: { tag: string; type: string; name: string }[] }[];
+  forms: { action: string; method: string; enctype?: string; fields: { tag: string; type: string; name: string; label?: string; required?: boolean; autocomplete?: string }[] }[];
   truncated: boolean; language: string; robots: string;
 }
 export interface PageDetails extends ExtractedPageData {
   elements?: PageElements;
+  inspection?: PageInspection;
   title?: string;
   description?: string;
   canonical_url?: string;
 }
 export interface CrawledPage extends PageDetails {
   requested_url: string;
+  http?: HttpInspection;
+  rendering?: RenderingInfo;
+  discovery?: { method: 'seed' | 'link' | 'sitemap'; source_url: string };
   status_code: number;
   depth: number;
   duration_ms: number;
@@ -49,6 +55,15 @@ export interface CrawlFailure {
   status_code?: number;
 }
 export interface CrawlOptions {
+  mode: CrawlMode;
+  browserConcurrency: number;
+  renderTimeoutMs: number;
+  scrollIterations: number;
+  captureScreenshots: boolean;
+  discoverSitemaps: boolean;
+  sitemapURLs: string[];
+  extractionRules: ExtractionRule[];
+  adaptiveConcurrency: boolean;
   maxConcurrency: number;
   maxPages: number;
   maxDepth: number;
@@ -69,6 +84,11 @@ export interface CrawlHooks {
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
   extract?: (html: string, url: string) => PageDetails;
+  /** Large source snapshots live outside the hot crawl JSON when this hook is supplied. */
+  onEvidence?: (url: string, evidence: BrowserEvidence) => Promise<string | undefined>;
+  onPage?: (page: CrawledPage) => void;
+  /** Code-level injection for local fixtures only; never accepted from a GUI request. */
+  browserFactory?: import('./crawler/browser.js').BrowserFactory;
   onLog?: (message: string) => void;
   /** Observes a mutable snapshot synchronously; callers must not modify it. */
   onProgress?: (result: CrawlResult) => void;
@@ -77,6 +97,8 @@ export interface CrawlHooks {
 }
 export interface CrawlResult {
   schema_version: 1;
+  discovery?: DiscoveryInfo;
+  telemetry?: CrawlTelemetry;
   start_url: string;
   started_at: string;
   finished_at: string;
