@@ -9,6 +9,9 @@ import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
+import { connect } from 'node:net';
+import { once } from 'node:events';
+import { startDenyProxy } from '../dist/crawler/browser.js';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
 import { runCrawl } from '../dist/engine.js';
@@ -163,4 +166,36 @@ test('Detached parser documents do not leak base URLs, rules or elements between
   assert.equal(first.canonical_url,'https://one.example/docs/guide');assert.equal(second.canonical_url,'https://two.example/start/guide');
   assert.equal(first.outgoing_links[0],'https://one.example/docs/child');assert.equal(second.outgoing_links[0],'https://two.example/start/child');
   assert.deepEqual(first.inspection.custom.Heading,['First']);assert.deepEqual(second.inspection.custom.Heading,['Second']);
+});
+
+// Chromium can reset a rejected HTTPS tunnel before consuming the denial response.
+test('Deny proxy contains socket-local resets and still refuses later requests', async () => {
+  const proxy = await startDenyProxy();
+  try {
+    const accepted = once(proxy.server, 'connection');
+    const client = connect(Number(new URL(proxy.url).port), '127.0.0.1');
+    client.on('error', () => client.destroy());
+    const [socket] = await accepted;
+    socket.emit('error', Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }));
+    assert.equal(socket.destroyed, true);
+    client.destroy();
+    const response = await fetch(proxy.url);
+    assert.equal(response.status, 403);
+    await response.text();
+  } finally { await proxy.close(); }
+});
+
+test('Deny proxy closes CONNECT sockets and shutdown is idempotent', async () => {
+  const proxy = await startDenyProxy();
+  const client = connect(Number(new URL(proxy.url).port), '127.0.0.1');
+  client.on('error', () => client.destroy());
+  try {
+    await once(client, 'connect');
+    client.write('CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n');
+    const [data] = await once(client, 'data');
+    assert.match(data.toString(), /^HTTP\/1\.1 403 Forbidden/);
+    await proxy.close();
+    await proxy.close();
+    assert.equal(proxy.server.listening, false);
+  } finally { client.destroy(); await proxy.close(); }
 });

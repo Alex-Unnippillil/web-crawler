@@ -2,7 +2,8 @@
  * A denying proxy is a second boundary for requests missed by browser interception.
  * No remote scripts run in the Node/Studio process. No stealth or challenge bypass.
  */
-import { createServer, type Server } from 'node:http';
+import { createServer } from 'node:http';
+import type { Socket } from 'node:net';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { Browser, BrowserContext, LaunchOptions, Route } from 'playwright';
@@ -35,10 +36,46 @@ export async function browserAvailability(): Promise<{ installed: boolean; versi
   } catch { return { installed: false, version: 'Not installed', message: 'Install project dependencies, then run npm run browser:install.' }; }
 }
 
+/** Own rejected browser sockets so connection resets cannot escape into the crawler. */
+export async function startDenyProxy() {
+  const sockets = new Set<Socket>();
+  const server = createServer((_request, response) => {
+    response.writeHead(403, { Connection: 'close' });
+    response.end('Direct browser network access is disabled.');
+  });
+  server.on('connection', socket => {
+    sockets.add(socket);
+    // Chromium may reset rejected CONNECT sockets on any OS. Handle only this
+    // socket's transport errors, never global uncaught exceptions.
+    socket.on('error', () => socket.destroy());
+    socket.once('close', () => sockets.delete(socket));
+    socket.setTimeout(5000, () => socket.destroy());
+  });
+  server.on('connect', (_request, socket) => {
+    socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => { server.off('error', reject); resolve(); });
+  });
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Cannot start browser network guard.');
+  let closing: Promise<void> | undefined;
+  return {
+    server,
+    url: `http://127.0.0.1:${address.port}`,
+    close: () => closing ??= new Promise<void>((resolve, reject) => {
+      // closeAllConnections excludes CONNECT sockets; explicitly destroy those too.
+      for (const socket of sockets) socket.destroy();
+      server.close(error => error ? reject(error) : resolve());
+    }),
+  };
+}
+
 export class BrowserPool {
   private browser?: Browser;
   private opening?: Promise<Browser>;
-  private denyProxy?: Server;
+  private denyProxy?: Awaited<ReturnType<typeof startDenyProxy>>;
   private proxyURL = '';
   private active = 0;
   private uses = 0;
@@ -68,10 +105,7 @@ export class BrowserPool {
       const { chromium } = await import('playwright');
       if (!this.factory && !existsSync(chromium.executablePath())) throw new BrowserUnavailableError('Chromium is not installed. Run npm run browser:install, or choose Fast HTTP.');
       if (!this.denyProxy) {
-        const proxy = createServer((_req, res) => { res.writeHead(403); res.end('Direct browser network access is disabled.'); });
-        proxy.on('connect', (_req, socket) => { socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); });
-        await new Promise<void>((resolve, reject) => { proxy.once('error', reject); proxy.listen(0, '127.0.0.1', () => { proxy.off('error', reject); resolve(); }); });
-        this.denyProxy = proxy; this.proxyURL = `http://127.0.0.1:${(proxy.address() as { port: number }).port}`;
+        this.denyProxy = await startDenyProxy(); this.proxyURL = this.denyProxy.url;
       }
       const launch: LaunchOptions = {
         headless: true, chromiumSandbox: true, timeout: 15000,
@@ -303,6 +337,6 @@ export class BrowserPool {
     await Promise.allSettled([...this.contexts].map(context => context.close()));
     if (this.opening) await this.opening.catch(() => {});
     await this.browser?.close().catch(() => {}); this.browser = undefined;
-    if (this.denyProxy) { this.denyProxy.closeAllConnections(); await new Promise<void>(resolve => this.denyProxy!.close(() => resolve())); this.denyProxy = undefined; }
+    if (this.denyProxy) { await this.denyProxy.close(); this.denyProxy = undefined; }
   }
 }
