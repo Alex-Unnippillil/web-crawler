@@ -120,9 +120,9 @@ jobs:
                       lines.insert(0, header + "\n")
               elif kind == "cmd":
                   if lines and lines[0].strip().lower() == "@echo off":
-                      lines.insert(1, header + "\r\n")
+                      lines.insert(1, header + "\n")
                   else:
-                      lines.insert(0, header + "\r\n")
+                      lines.insert(0, header + "\n")
               elif kind == "html":
                   if lines and lines[0].lstrip().lower().startswith("<!doctype"):
                       lines.insert(1, header + "\n")
@@ -170,8 +170,6 @@ jobs:
               else:
                   skipped.append((item, note))
 
-          # Inventory gives every tracked file a human-readable purpose, including
-          # formats where inline comments would be invalid or would alter data.
           inventory = Path("docs/FILE-COMMENTS.md")
           all_items = sorted(set(tracked + [str(inventory)]))
           skipped_names = {name for name, _ in skipped}
@@ -192,7 +190,8 @@ jobs:
                   state = "Yes"
               else:
                   state = "No — format/data integrity preserved"
-              rows.append(f"| `{item}` | {purpose(item).replace('|', '\\|')} | {state} |")
+              description = purpose(item).replace("|", "\\|")
+              rows.append(f"| `{item}` | {description} | {state} |")
           rows.append("")
           inventory.write_text("\n".join(rows), encoding="utf-8")
 
