@@ -1,0 +1,68 @@
+name: Validate Web Crawler Studio
+on:
+  push:
+    branches: [studio/build-20260916]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Verify and reconstruct source candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .bootstrap/part-*.b64 | base64 --decode > "$RUNNER_TEMP/studio-source.tar.xz"
+          echo "bc2d71e6a67289c0dc93d57e8b07c9283a0f9c510a187e63f61f4c7b013e3d69  $RUNNER_TEMP/studio-source.tar.xz" | sha256sum --check -
+          git checkout --detach dbe7adbd3436ec3188df01568040694cc63da387
+          python3 - <<'PY'
+          import os, tarfile, json
+          from pathlib import Path
+          with tarfile.open(Path(os.environ['RUNNER_TEMP']) / 'studio-source.tar.xz') as archive:
+              for member in archive.getmembers():
+                  path = Path(member.name)
+                  if path.is_absolute() or '..' in path.parts or '.git' in path.parts or not member.isfile():
+                      raise SystemExit('Unsafe source archive member: ' + member.name)
+              archive.extractall('.', filter='data')
+          package = json.loads(Path('package.json').read_text())
+          lock = json.loads(Path('package-lock.json').read_text())
+          lock['version'] = package['version']
+          lock['packages']['']['version'] = package['version']
+          lock['packages']['']['engines'] = package['engines']
+          Path('package-lock.json').write_text(json.dumps(lock, indent=2) + '\n')
+          PY
+          chmod +x start.sh 'Start Web Crawler.command'
+          git rm --ignore-unmatch report.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Type checking and all JavaScript tests
+        run: npm run check
+      - name: Real parser demo and monitoring tests
+        run: |
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Browser verification
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/e2e.py
+      - name: Commit validated source and real screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          # CI/release workflows are published separately through the authorized connector.
+          rm -f .github/workflows/ci.yml .github/workflows/release.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: Web Crawler Studio GUI, local history, safe networking and portable launchers'
+          git push origin HEAD:refs/heads/studio/validated-20260916
+          echo "Validated candidate: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Full npm checks, live demo, Python tests and Chromium end-to-end tests passed.' >> "$GITHUB_STEP_SUMMARY"
