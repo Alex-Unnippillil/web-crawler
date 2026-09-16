@@ -15,7 +15,7 @@ const pkg = JSON.parse(await readFile('package.json', 'utf8'));
 const name = `Web-Crawler-Studio-${pkg.version}-${platform}`;
 const work = join(root, 'release', name);
 await rm(work, { recursive: true, force: true }); await mkdir(join(work, 'runtime'), { recursive: true });
-for (const path of ['dist', 'ui', 'ui-dist', 'scripts/launch.mjs', 'Start Web Crawler.cmd', 'Start Web Crawler.command', 'start.sh', 'README.md', 'LICENSE', 'SECURITY.md', 'CHANGELOG.md', 'docs', 'package.json', 'package-lock.json']) {
+for (const path of ['dist', 'ui', 'ui-dist', 'scripts/launch.mjs', 'Start Web Crawler.cmd', 'Start Web Crawler.command', 'start.sh', 'Install Browser.cmd', 'install-browser.sh', 'README.md', 'LICENSE', 'SECURITY.md', 'CHANGELOG.md', 'docs', 'package.json', 'package-lock.json']) {
   await mkdir(dirname(join(work, path)), { recursive: true });
   await cp(join(root, path), join(work, path), { recursive: true });
 }

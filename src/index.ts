@@ -1,6 +1,8 @@
 // Repository note: Runs the TypeScript command-line crawler and writes requested reports.
 // CLI entry point: parses user input, runs a crawl, and writes the requested reports.
 
+import { EvidenceStore } from './studio/evidence.js';
+import { writeFile } from 'node:fs/promises';
 import { parseCLI, HELP } from './cli.js';
 import { runCrawl } from './engine.js';
 import { writeReports } from './report.js';
@@ -16,10 +18,13 @@ async function main(): Promise<void> {
   const terminate = () => { signalExit = 143; controller.abort(new Error('Interrupted by SIGTERM.')); };
   process.once('SIGINT', interrupt); process.once('SIGTERM', terminate);
   try {
+    const evidence = new EvidenceStore(`${config.output.replace(/\.json$/i, '')}.evidence`);
     const result = await runCrawl(config.url, config.options, {
-      signal: controller.signal, onLog: config.quiet ? undefined : message => console.log(message),
+      signal: controller.signal, onEvidence: (url, record) => evidence.save(url, record), onLog: config.quiet ? undefined : message => console.log(message),
     });
+    await evidence.close();
     const files = writeReports(result, config.output);
+    await writeFile(`${config.output.replace(/\.json$/i, '')}.full.json`, JSON.stringify(result, null, 2), { mode: 0o600 });
     console.log(`Finished crawling: ${result.summary.pages_crawled} HTML pages, ${result.summary.failed} failed/non-HTML candidates, ${result.summary.requests} requests.`);
     for (const filename of files) console.log(`Wrote ${filename}`);
     for (const warning of result.warnings) console.error(`Warning: ${warning}`);

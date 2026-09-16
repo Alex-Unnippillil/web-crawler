@@ -14,7 +14,9 @@
     "gui": "npm run build && node dist/studio/server.js",
     "gui:open": "node dist/studio/server.js",
     "test:studio": "node --test tests/studio.test.mjs",
-    "package:portable": "node scripts/package-portable.mjs"
+    "package:portable": "node scripts/package-portable.mjs",
+    "browser:install": "playwright install chromium",
+    "test:hybrid": "npm run build && node --test tests/hybrid.test.mjs"
   },
   "keywords": [
     "crawler",
@@ -40,7 +42,8 @@
   "type": "module",
   "dependencies": {
     "jsdom": "^29.1.1",
-    "p-limit": "^7.3.2"
+    "p-limit": "^7.3.2",
+    "playwright": "1.63.0"
   },
   "engines": {
     "node": "^22.16.0 || ^24.0.0 || >=26.0.0"

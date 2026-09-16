@@ -66,7 +66,7 @@ test('static serving is allowlisted and never exposes local files', async t => {
 });
 test('validates options and body size before starting a job', async t => {
   const { api } = await setup(t);
-  for (const input of [null, [], { demo: 'yes' }, { options: [] }, { url: 'file:///etc/passwd' }, { url: 'https://a:b@example.com' }, { url: 'https://example.com', options: { maxPages: 501 } }, { url: 'https://example.com', options: { maxConcurrency: 9 } }, { url: 'https://example.com', options: { delayMs: 0 } }]) {
+  for (const input of [null, [], { demo: 'yes' }, { options: [] }, { url: 'file:///etc/passwd' }, { url: 'https://a:b@example.com' }, { url: 'https://example.com', options: { maxPages: 2001 } }, { url: 'https://example.com', options: { maxConcurrency: 9 } }, { url: 'https://example.com', options: { delayMs: 0 } }]) {
     assert.equal((await api('/api/jobs', 'POST', input)).status, 400);
   }
   assert.equal((await api('/api/jobs', 'POST', { name: 'x'.repeat(18000) })).status, 400);

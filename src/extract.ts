@@ -2,6 +2,8 @@
 // Extracts normalized metadata, links, images, and page text from fetched HTML documents.
 
 import { JSDOM, VirtualConsole } from 'jsdom';
+import { inspectDocument } from './extract/inspection.js';
+import type { ExtractionRule } from './inspection-types.js';
 import { extractElements } from './elements.js';
 import { safeHTTP } from './url.js';
 import type { ExtractedPageData, PageDetails } from './types.js';
@@ -49,13 +51,15 @@ export function getImagesFromHTML(html: string, baseURL: string): string[] {
 export function extractPageData(html: string, pageURL: string): ExtractedPageData {
   return withDocument(html, pageURL, doc => extract(doc, pageURL));
 }
-export function extractPageDetails(html: string, pageURL: string): PageDetails {
+export function extractPageDetails(html: string, pageURL: string, rules: ExtractionRule[] = []): PageDetails {
   // The complete page is parsed once, rather than four separate JSDOM instances.
   return withDocument(html, pageURL, doc => {
     const elements = extractElements(doc, pageURL);
     return {
     ...extract(doc, pageURL),
     elements,
+    inspection: inspectDocument(doc, pageURL, rules),
+    outgoing_links: [...new Set(elements.links.map(link => link.url))],
     image_urls: [...new Set(elements.images.flatMap(image => image.candidates))],
     title: text(doc.querySelector('title')),
     description: doc.querySelector('meta[name="description" i]')?.getAttribute('content')?.trim() ?? '',
