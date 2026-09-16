@@ -1,0 +1,92 @@
+name: Prepare validated Hybrid Workbench release
+on:
+  push:
+    branches: [upgrade/hybrid-analysis-20260916]
+    paths: [.github/workflows/engineering-release-prep.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      REQUIRE_BROWSER: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Require successful checks for the reviewed feature commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          expected = 'f513bb871dc4cf06b98fb649ce18b1b9327d880b'
+          for run_id in [35162075652, 35162075656]:
+              for attempt in range(36):
+                  request = urllib.request.Request(f'https://api.github.com/repos/Alex-Unnippillil/web-crawler/actions/runs/{run_id}', headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+                  with urllib.request.urlopen(request, timeout=30) as response: run = json.load(response)
+                  assert run['head_sha'] == expected, run['head_sha']
+                  if run['status'] == 'completed':
+                      assert run['conclusion'] == 'success', (run_id, run['conclusion'])
+                      break
+                  time.sleep(5)
+              else: raise RuntimeError(f'Validation {run_id} did not finish')
+          print('Cross-platform browser checks and portable acceptance are successful.')
+          PY
+          git checkout -b release-prep origin/upgrade/hybrid-workbench-20260916
+          test "$(git rev-parse HEAD)" = 'f513bb871dc4cf06b98fb649ce18b1b9327d880b'
+      - name: Prepare additive 4.1.0 release metadata
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for name in ['package.json','package-lock.json']:
+              path=Path(name); value=json.loads(path.read_text())
+              assert value['version']=='4.0.0'
+              value['version']='4.1.0'
+              if name=='package-lock.json':
+                  assert value['packages']['']['version']=='4.0.0'
+                  value['packages']['']['version']='4.1.0'
+              path.write_text(json.dumps(value,indent=2)+'\n')
+          path=Path('src/studio/server.ts'); text=path.read_text()
+          assert text.count("version: '4.0.0'")==1
+          path.write_text(text.replace("version: '4.0.0'", "version: '4.1.0'"))
+          path=Path('CHANGELOG.md'); text=path.read_text()
+          assert '## Unreleased — Hybrid Workbench' in text
+          path.write_text(text.replace('## Unreleased — Hybrid Workbench','## 4.1.0 — Hybrid Workbench (2026-09-16)',1))
+          path=Path('README.md'); text=path.read_text()
+          assert '### Hybrid Workbench' in text
+          path.write_text(text.replace('### Hybrid Workbench','### Hybrid Workbench 4.1.0',1))
+          path=Path('docs/VALIDATION.md'); text=path.read_text().replace('165 Node tests','167 Node tests')
+          heading='## Hybrid Workbench — current engineering pass (2026-09-16)'
+          assert heading in text
+          section='''## Hybrid Workbench 4.1.0 release preparation
+
+          The reviewed feature commit `f513bb871dc4cf06b98fb649ce18b1b9327d880b` passed [Windows, macOS and Ubuntu browser/HTTP/API checks](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35162075652) and [four portable archive builds plus native Windows/Linux acceptance](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35162075656) before the additive 4.1.0 version was selected. The version metadata is validated again in PR #6 before merging. The main-branch release pipeline independently verifies the final versioned archives before publication.
+
+          Cross-platform testing found an unhandled reset on the deny proxy's accepted sockets. Each socket now owns its error/timeout/close lifecycle; shutdown explicitly destroys CONNECT sockets. Two regression tests exercise connection reset containment and CONNECT denial without changing the network policy. There is no global uncaught-exception suppression.
+
+          '''
+          section='\n'.join(line[10:] if line.startswith('          ') else line for line in section.split('\n'))
+          path.write_text(text.replace(heading,section+heading,1))
+          PY
+      - name: Validate the versioned candidate
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          bash .github/prepare-browser-ci.sh
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Commit release preparation on a feature branch only
+        run: |
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          git add package.json package-lock.json src/studio/server.ts CHANGELOG.md README.md docs/VALIDATION.md
+          git diff --cached --check
+          git commit -m 'release: prepare Hybrid Workbench 4.1.0'
+          git push origin HEAD:refs/heads/upgrade/hybrid-release-validated-20260916
