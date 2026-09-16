@@ -6,3 +6,13 @@ dist/
 *.log
 .DS_Store
 coverage/
+/report.*
+/reports/
+*.tmp
+__pycache__/
+
+/ui-dist/
+/release/
+/.crawler-data/
+/playwright-report/
+/test-results/

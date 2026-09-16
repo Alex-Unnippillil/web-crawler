@@ -6,7 +6,7 @@ import {
   getURLsFromHTML,
   getImagesFromHTML,
   extractPageData,
-} from "./crawl";
+} from "./crawl.js";
 
 test("normalizeURL", () => {
   expect(normalizeURL("https://www.boot.dev/blog/path/"))

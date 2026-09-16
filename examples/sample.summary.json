@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "start_url": "https://field-notes.example/",
+  "started_at": "2026-09-16T14:00:00.000Z",
+  "finished_at": "2026-09-16T14:00:01.800Z",
+  "duration_ms": 1800,
+  "options": {
+    "maxConcurrency": 3,
+    "maxPages": 50,
+    "maxDepth": 10,
+    "timeoutMs": 15000,
+    "retries": 2,
+    "delayMs": 200,
+    "maxRetryDelayMs": 30000,
+    "maxBodyBytes": 2097152,
+    "maxDurationMs": 600000,
+    "maxQueryVariants": 10,
+    "maxLinksPerPage": 2000,
+    "pathPrefix": "",
+    "stripTracking": false,
+    "respectRobots": true,
+    "userAgent": "BootCrawler/2.0"
+  },
+  "errors": [],
+  "warnings": [
+    "Synthetic sample dataset — these example URLs were not fetched."
+  ],
+  "skipped": {
+    "duplicate": 4,
+    "robots": 1
+  },
+  "summary": {
+    "pages_crawled": 9,
+    "urls_scheduled": 9,
+    "requests": 10,
+    "retries": 0,
+    "failed": 0,
+    "unique_internal_links": 9,
+    "unique_external_links": 1,
+    "unique_images": 0,
+    "limit_reached": false,
+    "stopped": false
+  }
+}

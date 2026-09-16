@@ -1,0 +1,204 @@
+[
+  {
+    "url": "https://field-notes.example/",
+    "requested_url": "https://field-notes.example/",
+    "title": "Field Notes",
+    "heading": "Field Notes",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/guides",
+      "https://field-notes.example/about",
+      "https://field-notes.example/journal"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 0,
+    "duration_ms": 25,
+    "content_bytes": 1200,
+    "internal_links": [
+      "https://field-notes.example/guides",
+      "https://field-notes.example/about",
+      "https://field-notes.example/journal"
+    ],
+    "external_links": []
+  },
+  {
+    "url": "https://field-notes.example/about",
+    "requested_url": "https://field-notes.example/about",
+    "title": "About Field Notes",
+    "heading": "About Field Notes",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/contact",
+      "https://example.com/"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 1,
+    "duration_ms": 39,
+    "content_bytes": 1400,
+    "internal_links": [
+      "https://field-notes.example/contact"
+    ],
+    "external_links": [
+      "https://example.com/"
+    ]
+  },
+  {
+    "url": "https://field-notes.example/contact",
+    "requested_url": "https://field-notes.example/contact",
+    "title": "Contact",
+    "heading": "Contact",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 2,
+    "duration_ms": 53,
+    "content_bytes": 1600,
+    "internal_links": [
+      "https://field-notes.example/"
+    ],
+    "external_links": []
+  },
+  {
+    "url": "https://field-notes.example/guides",
+    "requested_url": "https://field-notes.example/guides",
+    "title": "Practical guides",
+    "heading": "Practical guides",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/guides/getting-started",
+      "https://field-notes.example/guides/robots",
+      "https://field-notes.example/"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 1,
+    "duration_ms": 32,
+    "content_bytes": 1300,
+    "internal_links": [
+      "https://field-notes.example/guides/getting-started",
+      "https://field-notes.example/guides/robots",
+      "https://field-notes.example/"
+    ],
+    "external_links": []
+  },
+  {
+    "url": "https://field-notes.example/guides/getting-started",
+    "requested_url": "https://field-notes.example/guides/getting-started",
+    "title": "Getting started",
+    "heading": "Getting started",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/guides/robots"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 2,
+    "duration_ms": 60,
+    "content_bytes": 1700,
+    "internal_links": [
+      "https://field-notes.example/guides/robots"
+    ],
+    "external_links": []
+  },
+  {
+    "url": "https://field-notes.example/guides/robots",
+    "requested_url": "https://field-notes.example/guides/robots",
+    "title": "Robots policy",
+    "heading": "Robots policy",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/guides"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 2,
+    "duration_ms": 67,
+    "content_bytes": 1800,
+    "internal_links": [
+      "https://field-notes.example/guides"
+    ],
+    "external_links": []
+  },
+  {
+    "url": "https://field-notes.example/journal",
+    "requested_url": "https://field-notes.example/journal",
+    "title": "The journal",
+    "heading": "The journal",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/journal/reliability",
+      "https://field-notes.example/journal/testing"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 1,
+    "duration_ms": 46,
+    "content_bytes": 1500,
+    "internal_links": [
+      "https://field-notes.example/journal/reliability",
+      "https://field-notes.example/journal/testing"
+    ],
+    "external_links": []
+  },
+  {
+    "url": "https://field-notes.example/journal/reliability",
+    "requested_url": "https://field-notes.example/journal/reliability",
+    "title": "Reliability matters",
+    "heading": "Reliability matters",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/journal/testing"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 2,
+    "duration_ms": 74,
+    "content_bytes": 1900,
+    "internal_links": [
+      "https://field-notes.example/journal/testing"
+    ],
+    "external_links": []
+  },
+  {
+    "url": "https://field-notes.example/journal/testing",
+    "requested_url": "https://field-notes.example/journal/testing",
+    "title": "Test the unhappy paths",
+    "heading": "Test the unhappy paths",
+    "first_paragraph": "Synthetic example content for the offline report demonstration.",
+    "outgoing_links": [
+      "https://field-notes.example/guides/getting-started"
+    ],
+    "image_urls": [],
+    "canonical_url": "",
+    "description": "Example dataset, not a live website crawl.",
+    "status_code": 200,
+    "depth": 2,
+    "duration_ms": 81,
+    "content_bytes": 2000,
+    "internal_links": [
+      "https://field-notes.example/guides/getting-started"
+    ],
+    "external_links": []
+  }
+]

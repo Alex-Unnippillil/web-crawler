@@ -1,15 +1,35 @@
 {
   "name": "web-crawler",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "3.0.0",
+  "main": "dist/index.js",
   "scripts": {
+    "start": "tsx ./src/index.ts",
     "test": "vitest run",
-    "start": "tsx ./src/index.ts"
+    "test:watch": "vitest",
+    "test:core": "node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.ui.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/build-ui.mjs",
+    "check": "npm run typecheck && npm test && npm run build && npm run test:core",
+    "demo": "npm run build && node scripts/demo.mjs",
+    "gui": "npm run build && node dist/studio/server.js",
+    "gui:open": "node dist/studio/server.js",
+    "test:studio": "node --test tests/studio.test.mjs",
+    "package:portable": "node scripts/package-portable.mjs"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "crawler",
+    "typescript",
+    "cli",
+    "web-scraping",
+    "link-analysis",
+    "boot-dev",
+    "gui",
+    "local-first",
+    "site-audit"
+  ],
+  "author": "Alex Unnippillil",
   "license": "ISC",
-  "description": "",
+  "description": "A local-first TypeScript web crawler with a browser GUI, live controls, persistent history and offline reports.",
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.5.1",
@@ -21,5 +41,12 @@
   "dependencies": {
     "jsdom": "^29.1.1",
     "p-limit": "^7.3.2"
+  },
+  "engines": {
+    "node": "^22.16.0 || ^24.0.0 || >=26.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alex-Unnippillil/web-crawler.git"
   }
 }
