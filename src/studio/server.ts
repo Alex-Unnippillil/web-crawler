@@ -1,3 +1,5 @@
+// Serves the local Web Crawler Studio UI and its authenticated loopback-only API endpoints.
+
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';

@@ -1,3 +1,5 @@
+# Browser-level acceptance test for the real Studio UI, controls, exports, themes, and responsive layout.
+
 """Full browser/real-jsdom integration test. Run after npm run build.
 Requires: python -m pip install playwright; python -m playwright install chromium.
 Screenshots are genuine application captures of the explicitly labelled local demo.

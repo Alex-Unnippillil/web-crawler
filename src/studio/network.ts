@@ -1,3 +1,5 @@
+// Applies GUI network-safety checks so local/private address space is not crawled accidentally.
+
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { request as httpRequest } from 'node:http';

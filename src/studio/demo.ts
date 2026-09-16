@@ -1,3 +1,5 @@
+// Hosts the self-contained demo website used to exercise the GUI without crawling the public web.
+
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 

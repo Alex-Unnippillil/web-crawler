@@ -1,3 +1,5 @@
+// Builds JSON, CSV, HTML, summary, and SVG report outputs from completed crawl data.
+
 import { writeFileSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { resolve, dirname, extname } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';

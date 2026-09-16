@@ -1,3 +1,5 @@
+// Core regression suite covering URL rules, crawl limits, HTTP behavior, reports, and CLI behavior.
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';

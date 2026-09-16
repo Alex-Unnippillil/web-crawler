@@ -1,3 +1,5 @@
+// Centralizes URL normalization, identity, scope checks, and tracking-parameter handling.
+
 /** Legacy exercise helper. Do not use this lossy representation as a crawl key. */
 export function normalizeURL(input: string): string {
   const url = new URL(input);

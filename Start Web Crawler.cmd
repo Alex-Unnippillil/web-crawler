@@ -1,3 +1,4 @@
+rem Windows launcher: prepares dependencies when needed and starts the local Studio server.
 @echo off
 setlocal
 cd /d "%~dp0"

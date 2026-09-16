@@ -1,3 +1,5 @@
+// Cross-platform launcher helper that builds the app, starts Studio, and opens the local browser URL.
+
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

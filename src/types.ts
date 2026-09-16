@@ -1,3 +1,5 @@
+// Shared TypeScript contracts for crawl results, failures, progress events, and configuration.
+
 /** The five original Boot.dev fields remain present in every successful record. */
 export interface ExtractedPageData {
   url: string;

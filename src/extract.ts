@@ -1,3 +1,5 @@
+// Extracts normalized metadata, links, images, and page text from fetched HTML documents.
+
 import { JSDOM, VirtualConsole } from 'jsdom';
 import { safeHTTP } from './url.js';
 import type { ExtractedPageData, PageDetails } from './types.js';

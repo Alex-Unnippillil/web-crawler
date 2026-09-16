@@ -1,3 +1,5 @@
+// Integration tests for the Studio API, history, controls, exports, and network protections.
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile, readdir } from 'node:fs/promises';

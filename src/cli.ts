@@ -1,3 +1,5 @@
+// Parses command-line arguments and converts them into validated crawler options.
+
 import { parseArgs } from 'node:util';
 import { validateOptions } from './options.js';
 import { httpURL } from './url.js';

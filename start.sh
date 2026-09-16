@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Linux/WSL launcher: prepares dependencies when needed and starts the local Studio server.
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 if [[ -f runtime/node ]]; then

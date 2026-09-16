@@ -1,3 +1,5 @@
+// Provides the compatibility wrapper that exposes the crawler through the original Boot.dev API.
+
 import { runCrawl } from './engine.js';
 import type { CrawlHooks, CrawlOptions, CrawlResult, ExtractedPageData } from './types.js';
 export { normalizeURL } from './url.js';

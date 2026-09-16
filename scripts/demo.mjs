@@ -1,3 +1,5 @@
+// Runs a deterministic local crawl that validates the real parser and report generators end to end.
+
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import assert from 'node:assert/strict';

@@ -1,3 +1,5 @@
+// Converts browser TypeScript into dependency-free JavaScript after semantic checks run.
+
 import { stripTypeScriptTypes } from 'node:module';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 // The UI uses erasable TypeScript syntax. Node emits browser JavaScript

@@ -1,3 +1,5 @@
+// Implements the bounded crawl engine, request scheduling, retries, redirects, and crawl lifecycle.
+
 import { setTimeout as sleep } from 'node:timers/promises';
 import { httpURL, isInScope } from './url.js';
 import { parseRobots, type RobotsPolicy } from './robots.js';

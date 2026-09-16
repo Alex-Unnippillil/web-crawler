@@ -1,3 +1,5 @@
+// Manages GUI crawl jobs, pause/resume/stop controls, checkpoints, history, and exports.
+
 import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, readFile, writeFile, rename, unlink, stat } from 'node:fs/promises';
 import { join } from 'node:path';

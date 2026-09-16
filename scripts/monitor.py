@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Optional scheduled monitoring helper that runs crawls and can email a concise change report.
+
 """One Linux/WSL monitoring iteration. Scheduling is configured separately.
 No shell evaluation, no implicit email sending, and no plaintext SMTP transport.
 """

@@ -1,3 +1,5 @@
+// Parses robots.txt rules and evaluates whether crawler requests are permitted.
+
 interface Rule { allow: boolean; length: number; pattern: string; end: boolean }
 interface Group { agents: string[]; rules: Rule[]; delay: number }
 /** Decode unreserved ASCII octets; preserve reserved/non-ASCII octets for URI matching. */

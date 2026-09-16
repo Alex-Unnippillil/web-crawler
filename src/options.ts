@@ -1,3 +1,5 @@
+// Defines crawler defaults and validates option ranges before network work begins.
+
 import type { CrawlOptions } from './types.js';
 export const DEFAULT_OPTIONS: Readonly<CrawlOptions> = Object.freeze({
   maxConcurrency: 3, maxPages: 50, maxDepth: 10, timeoutMs: 15000, retries: 2,

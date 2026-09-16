@@ -1,3 +1,5 @@
+// Browser-side controller for Web Crawler Studio: forms, live progress, results, history, and exports.
+
 import type { Job, JobMeta } from '../src/studio/jobs.js';
 import type { CrawledPage } from '../src/types.js';
 

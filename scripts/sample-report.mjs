@@ -1,3 +1,5 @@
+// Generates sample report assets used for documentation and manual inspection.
+
 import { writeReports } from '../dist/report.js';
 import { DEFAULT_OPTIONS } from '../dist/options.js';
 // Explicitly synthetic sample, used to demonstrate reports without a network crawl.

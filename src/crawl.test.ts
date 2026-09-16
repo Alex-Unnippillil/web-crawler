@@ -1,3 +1,5 @@
+// Verifies the legacy crawler-facing API remains compatible with the original project.
+
 import { expect, test } from "vitest";
 import {
   normalizeURL,

@@ -1,3 +1,5 @@
+// Produces self-contained portable archives with a bundled official Node.js runtime.
+
 /** Build a redistributable ZIP with a verified official Node runtime.
  * Run on Linux CI after npm run check. No credentials or crawl data are copied.
  */

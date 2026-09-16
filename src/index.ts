@@ -1,3 +1,5 @@
+// CLI entry point: parses user input, runs a crawl, and writes the requested reports.
+
 import { parseCLI, HELP } from './cli.js';
 import { runCrawl } from './engine.js';
 import { writeReports } from './report.js';

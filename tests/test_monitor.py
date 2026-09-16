@@ -1,3 +1,5 @@
+# Unit tests for the optional POSIX monitoring and email-report helper.
+
 import importlib.util
 from pathlib import Path
 import tempfile

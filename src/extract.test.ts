@@ -1,3 +1,5 @@
+// Exercises HTML extraction behavior against real jsdom documents and edge cases.
+
 import { expect, test } from 'vitest';
 import { extractPageData, extractPageDetails } from './extract.js';
 import { runCrawl } from './engine.js';
