@@ -63,7 +63,7 @@ export async function startStudio(config: { port?: number; directory?: string; o
         const received = Buffer.from(String(req.headers['x-crawler-token'] ?? ''));
         const secret = Buffer.from(token);
         if (received.length !== secret.length || !timingSafeEqual(received, secret)) { send(res, 403, { error: 'Session expired. Refresh this page.' }); return; }
-        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.0.0', browser: browserState }); return; }
+        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.1.0', browser: browserState }); return; }
         if (url.pathname === '/api/jobs' && req.method === 'POST') { send(res, 201, await store.start(await body(req))); return; }
         if (url.pathname === '/api/browser' && req.method === 'GET') { browserState = await browserAvailability(); send(res, 200, browserState); return; }
         const match = /^\/api\/jobs\/([a-f0-9-]{36})(?:\/(pause|resume|stop|export|image|evidence))?$/.exec(url.pathname);

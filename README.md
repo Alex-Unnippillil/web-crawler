@@ -1,5 +1,6 @@
 <!-- Repository note: Setup, daily operation, downloads, and limits for Web Crawler Studio. -->
 # Web Crawler Studio
+### Hybrid Workbench 4.1.0
 
 **A local-first TypeScript crawler for HTML and JavaScript websites.**
 

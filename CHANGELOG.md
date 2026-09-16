@@ -1,7 +1,7 @@
 <!-- Repository note: Records user-visible changes between project versions. -->
 # Changelog
 
-## Unreleased — Hybrid inspection
+## 4.1.0 — Hybrid Workbench (2026-09-16)
 
 - Add Fast HTTP / Smart Hybrid / Full Browser with bounded, guarded Playwright contexts and optional Chromium installation.
 - Capture raw/rendered comparisons, screenshots, source, read-only network requests, console errors and typed extraction evidence.
