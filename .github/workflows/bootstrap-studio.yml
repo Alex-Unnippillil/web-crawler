@@ -54,6 +54,21 @@ jobs:
           await writeFile(new URL('../ui-dist/app.js', import.meta.url), output);
           console.log('Built the dependency-free TypeScript browser interface.');
           JS
+      - name: Use locator assertions with the strict production CSP
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tests/e2e.py')
+          s = p.read_text().replace('from playwright.sync_api import sync_playwright\n', 'from playwright.sync_api import sync_playwright, expect\n')
+          s = s.replace('page.wait_for_function("document.querySelector(\'#metric-pages\').textContent !== \'0\'")', 'expect(page.locator("#metric-pages")).not_to_have_text("0")')
+          s = s.replace('page.wait_for_function("document.querySelector(\'#crawl-status\').textContent === \'Paused\'")', 'expect(page.locator("#crawl-status")).to_have_text("Paused")')
+          s = s.replace('page.wait_for_function("document.querySelector(\'#crawl-status\').textContent.includes(\'Completed\')", timeout=20000)', 'expect(page.locator("#crawl-status")).to_contain_text("Completed", timeout=20000)')
+          s = s.replace('page.wait_for_function("document.querySelector(\'#metric-pages\').textContent === \'10\'")', 'expect(page.locator("#metric-pages")).to_have_text("10")')
+          s = s.replace('assert page.locator("tbody tr").count() == 1', 'expect(page.locator("tbody tr")).to_have_count(1)')
+          s = s.replace('page.evaluate("document.documentElement.scrollWidth <= innerWidth")', 'page.evaluate("() => document.documentElement.scrollWidth <= innerWidth")')
+          assert 'wait_for_function' not in s
+          p.write_text(s)
+          PY
       - name: Install dependencies
         run: npm ci
       - name: Type checking and all JavaScript tests
