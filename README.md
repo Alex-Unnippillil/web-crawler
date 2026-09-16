@@ -2,7 +2,7 @@
 <div align="center">
 
 # Web Crawler Studio
-### Visual Atlas 4.0 — see the structure behind the site.
+### Visualize the structure behind the site.
 
 **Crawl a website. Trace its connections. Explore its images and elements.**
 
