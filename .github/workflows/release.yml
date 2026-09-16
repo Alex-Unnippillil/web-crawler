@@ -1,0 +1,112 @@
+name: Build portable release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['package.json']
+permissions:
+  contents: read
+concurrency:
+  group: portable-release
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      exists: ${{ steps.version.outputs.exists }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.version.outputs.exists == 'false'
+        run: |
+          npm ci
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/e2e.py
+  package:
+    needs: validate
+    if: needs.validate.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        platform: [win-x64, linux-x64, darwin-arm64, darwin-x64]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci && npm run build
+      - run: npm run package:portable -- ${{ matrix.platform }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-${{ matrix.platform }}
+          path: |
+            release/Web-Crawler-Studio-*.zip
+            release/Web-Crawler-Studio-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
+  smoke:
+    needs: [validate, package]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win-x64
+          - os: ubuntu-latest
+            platform: linux-x64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: portable-${{ matrix.platform }}
+          path: downloads
+      - run: python tests/portable_smoke.py downloads/Web-Crawler-Studio-${{ needs.validate.outputs.version }}-${{ matrix.platform }}.zip
+  publish:
+    needs: [validate, package, smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: portable-*
+          path: downloads
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          gh release create "v$VERSION" downloads/* \
+            --target "${{ github.sha }}" \
+            --title "Web Crawler Studio $VERSION" \
+            --notes "Local-first TypeScript crawler with browser GUI, pause/stop, saved history, inspection, link maps and exports. Download the ZIP matching your OS, extract all files, and open the launcher. Node.js 24 is bundled; no separate Node/npm installation is required. Builds are unsigned. Verify the SHA-256 sidecar and follow your OS security policy. Setup and usage instructions are in README.md."

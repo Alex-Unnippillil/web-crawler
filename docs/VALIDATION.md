@@ -1,20 +1,31 @@
 # Validation and release checks
 
-## Local implementation checks (2026-09-16)
+## Validated source candidate — September 16, 2026
 
-- TypeScript engine, GUI backend and browser UI compile with the container's available TypeScript compiler. A local-only declaration shim stood in for unavailable third-party type packages; it is not included in the project.
-- 78 existing queue/HTTP/URL/robots/report/CLI tests passed.
-- 33 GUI HTTP/controller/security tests passed, including live loopback requests, pause/resume, cancellation, history persistence, deletion, exports, invalid inputs, Host/Origin checks and address classification.
-- Browser interaction checks passed for new crawl presets, real local-demo requests through the test controller, pause/resume, filtering, inspection, issues, graph keyboard selection, CSV download, theme changes, history and a 390-pixel mobile viewport. No browser JavaScript errors were recorded.
+The [candidate validation run](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35119654802) completed successfully on Ubuntu with Node.js 24 and the repository's locked dependencies.
 
-The local environment had no npm network access. API tests use an explicitly fixture-specific extractor to isolate the new application/controller from jsdom. The managed local Chromium blocks URL navigation, so local visual checks rendered the same compiled UI source in an isolated document and bridged only the already-tested loopback API. This is **not** claimed to be a full production-browser-origin or full-parser end-to-end test.
+- `npm ci`: successful dependency installation.
+- TypeScript 7 semantic checks: engine, backend and browser UI passed.
+- Vitest: 15 real-jsdom extraction and compatibility tests passed.
+- Node test runner: 111 core/HTTP/report/CLI/GUI API tests passed.
+- `npm run demo`: real-parser command-line demonstration passed.
+- Python monitoring suite: five tests passed.
+- Chromium end-to-end verification: passed against the actual HTTP application origin, installed jsdom parser and unchanged production Content Security Policy. No browser JavaScript/console errors were recorded.
 
-## Full checks in GitHub Actions
+Browser checks cover the local demo, pause/resume, filtering, inspector, issues, link-map keyboard selection, CSV download, light/dark themes, history, mobile layout, presets and reload persistence. The GUI demo returns ten pages and four intentional findings; the separate CLI fixture returns nine pages. Screenshots in `docs/` were captured by this real application test.
 
-`npm ci`, `npm run check`, `npm run demo`, Python monitoring tests and `tests/e2e.py` run on the release candidate. The full browser test launches the actual server, navigates normally to localhost and uses the actual installed jsdom parser. It exercises both desktop and mobile behavior and writes genuine application screenshots.
+The browser build uses Node's built-in TypeScript syntax stripping instead of TypeScript's version-specific compiler API. Semantic validation remains a separate mandatory check. Browser tests use locator assertions rather than eval-based polling; the application CSP was not weakened to accommodate tests.
 
-Only a successful validation workflow should publish a versioned portable release. Test logs and the workflow conclusion are the source of truth; this document does not claim that a pending or failed remote workflow has passed.
+## Continuous integration and portable releases
 
-## Remaining limits
+The normal [CI workflow](https://github.com/Alex-Unnippillil/web-crawler/actions/workflows/ci.yml) repeats the npm, CLI demo and Python checks on Windows, macOS and Ubuntu. Ubuntu also runs Chromium end-to-end tests.
 
-Windows/macOS portable archives are assembled using the official runtime for each target platform. Native startup checks are separate from the full Linux Chromium test; a successful archive build is not proof of a complete manual user-acceptance test on that OS. Builds are unsigned. Automated checks do not establish universal accessibility, SEO completeness, or security certification.
+The [release workflow](https://github.com/Alex-Unnippillil/web-crawler/actions/workflows/release.yml) validates the source, packages four official-runtime ZIPs, and exercises the extracted Windows x64 and Linux x64 packages on their native runners before publishing. Portable smoke tests start the included runtime/launcher, fetch the interface and assets, complete a real-parser demo, and download exports. The runtime archive checksum is checked against the official Node HTTPS manifest; each resulting app ZIP has a SHA-256 sidecar.
+
+Workflow conclusions and logs are the source of truth for each commit and release. Adding a workflow is not itself evidence that every target has passed; inspect the run attached to the relevant commit.
+
+## Local development checks and limits
+
+Initial local checks used fixture-specific parsers for the core and API tests because npm network access was unavailable in that execution environment. Local visual checks used the compiled interface with a loopback-only test bridge. Those narrower checks are not substituted for the successful full-parser, normal-origin candidate validation above.
+
+macOS archives are assembled using the official runtime for each architecture; archive creation and source CI are not the same as a complete native portable GUI acceptance test on each Mac architecture. Builds are unsigned and not notarized. Automated checks do not establish universal accessibility, SEO completeness or security certification.
