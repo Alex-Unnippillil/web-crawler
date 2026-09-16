@@ -1,0 +1,156 @@
+name: Add source comments
+on:
+  push:
+    branches: ['comments/add-file-comments-20260916']
+permissions:
+  contents: write
+jobs:
+  comment-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Start from current main
+        run: |
+          git fetch origin main
+          git checkout -B comment-main origin/main
+      - name: Add explanatory comments
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Every human-authored source, test, UI, helper, and launcher file gets a
+          # short purpose comment. JSON, generated reports/images, licenses, and
+          # Markdown documentation are intentionally left unchanged.
+          slash = {
+              'src/cli.ts': 'Parses command-line arguments and converts them into validated crawler options.',
+              'src/crawl.test.ts': 'Verifies the legacy crawler-facing API remains compatible with the original project.',
+              'src/crawl.ts': 'Provides the compatibility wrapper that exposes the crawler through the original Boot.dev API.',
+              'src/engine.ts': 'Implements the bounded crawl engine, request scheduling, retries, redirects, and crawl lifecycle.',
+              'src/extract.test.ts': 'Exercises HTML extraction behavior against real jsdom documents and edge cases.',
+              'src/extract.ts': 'Extracts normalized metadata, links, images, and page text from fetched HTML documents.',
+              'src/index.ts': 'CLI entry point: parses user input, runs a crawl, and writes the requested reports.',
+              'src/options.ts': 'Defines crawler defaults and validates option ranges before network work begins.',
+              'src/report.ts': 'Builds JSON, CSV, HTML, summary, and SVG report outputs from completed crawl data.',
+              'src/robots.ts': 'Parses robots.txt rules and evaluates whether crawler requests are permitted.',
+              'src/types.ts': 'Shared TypeScript contracts for crawl results, failures, progress events, and configuration.',
+              'src/url.ts': 'Centralizes URL normalization, identity, scope checks, and tracking-parameter handling.',
+              'src/studio/demo.ts': 'Hosts the self-contained demo website used to exercise the GUI without crawling the public web.',
+              'src/studio/jobs.ts': 'Manages GUI crawl jobs, pause/resume/stop controls, checkpoints, history, and exports.',
+              'src/studio/network.ts': 'Applies GUI network-safety checks so local/private address space is not crawled accidentally.',
+              'src/studio/server.ts': 'Serves the local Web Crawler Studio UI and its authenticated loopback-only API endpoints.',
+              'ui/app.ts': 'Browser-side controller for Web Crawler Studio: forms, live progress, results, history, and exports.',
+              'scripts/build-ui.mjs': 'Converts browser TypeScript into dependency-free JavaScript after semantic checks run.',
+              'scripts/demo.mjs': 'Runs a deterministic local crawl that validates the real parser and report generators end to end.',
+              'scripts/launch.mjs': 'Cross-platform launcher helper that builds the app, starts Studio, and opens the local browser URL.',
+              'scripts/package-portable.mjs': 'Produces self-contained portable archives with a bundled official Node.js runtime.',
+              'scripts/sample-report.mjs': 'Generates sample report assets used for documentation and manual inspection.',
+              'tests/core.test.mjs': 'Core regression suite covering URL rules, crawl limits, HTTP behavior, reports, and CLI behavior.',
+              'tests/studio.test.mjs': 'Integration tests for the Studio API, history, controls, exports, and network protections.',
+              'vitest.config.ts': 'Vitest configuration for the TypeScript extraction and compatibility test suites.',
+          }
+          hash_comments = {
+              'scripts/monitor.py': 'Optional scheduled monitoring helper that runs crawls and can email a concise change report.',
+              'tests/e2e.py': 'Browser-level acceptance test for the real Studio UI, controls, exports, themes, and responsive layout.',
+              'tests/portable_smoke.py': 'Smoke-tests an extracted portable release using the runtime and launchers shipped to end users.',
+              'tests/test_monitor.py': 'Unit tests for the optional POSIX monitoring and email-report helper.',
+          }
+
+          def read_preserving(path: Path):
+              raw = path.read_bytes()
+              newline = '\r\n' if b'\r\n' in raw else '\n'
+              return raw.decode('utf-8'), newline
+
+          def write_preserving(path: Path, text: str, newline: str):
+              normalized = text.replace('\r\n', '\n').replace('\r', '\n')
+              path.write_bytes(normalized.replace('\n', newline).encode('utf-8'))
+
+          for rel, purpose in slash.items():
+              path = Path(rel)
+              text, newline = read_preserving(path)
+              header = f'// {purpose}'
+              if not text.startswith(header):
+                  write_preserving(path, header + '\n\n' + text, newline)
+
+          for rel, purpose in hash_comments.items():
+              path = Path(rel)
+              text, newline = read_preserving(path)
+              header = f'# {purpose}'
+              if text.startswith('#!'):
+                  first, rest = text.split('\n', 1)
+                  if not rest.startswith(header):
+                      text = first + '\n' + header + '\n\n' + rest
+              elif not text.startswith(header):
+                  text = header + '\n\n' + text
+              write_preserving(path, text, newline)
+
+          # Keep executable launchers' shebang on line one.
+          launchers = {
+              'start.sh': 'Linux/WSL launcher: prepares dependencies when needed and starts the local Studio server.',
+              'Start Web Crawler.command': 'macOS launcher: prepares dependencies when needed and starts the local Studio server.',
+          }
+          for rel, purpose in launchers.items():
+              path = Path(rel)
+              text, newline = read_preserving(path)
+              header = f'# {purpose}'
+              if text.startswith('#!'):
+                  first, rest = text.split('\n', 1)
+                  if not rest.startswith(header):
+                      text = first + '\n' + header + '\n' + rest
+              elif not text.startswith(header):
+                  text = header + '\n' + text
+              write_preserving(path, text, newline)
+
+          path = Path('Start Web Crawler.cmd')
+          text, newline = read_preserving(path)
+          header = 'rem Windows launcher: prepares dependencies when needed and starts the local Studio server.'
+          if not text.lower().startswith(header.lower()):
+              write_preserving(path, header + '\n' + text, newline)
+
+          path = Path('ui/styles.css')
+          text, newline = read_preserving(path)
+          header = '/* Responsive visual system for Web Crawler Studio, including themes, tables, dialogs, and the link map. */'
+          if not text.startswith(header):
+              write_preserving(path, header + '\n\n' + text, newline)
+
+          path = Path('ui/index.html')
+          text, newline = read_preserving(path)
+          header = '<!-- Main application shell for the local Web Crawler Studio interface. -->'
+          if header not in text[:300]:
+              if text.lower().startswith('<!doctype html>'):
+                  first, rest = text.split('\n', 1)
+                  text = first + '\n' + header + '\n' + rest
+              else:
+                  text = header + '\n' + text
+              write_preserving(path, text, newline)
+
+          path = Path('ui/favicon.svg')
+          text, newline = read_preserving(path)
+          header = '<!-- Web Crawler Studio favicon; kept dependency-free for portable builds. -->'
+          if not text.startswith(header):
+              write_preserving(path, header + '\n' + text, newline)
+          PY
+          git diff --check
+          git diff --stat
+      - name: Validate comments-only update
+        run: |
+          npm ci
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Commit to main
+        shell: bash
+        run: |
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          git add src ui scripts tests 'Start Web Crawler.cmd' 'Start Web Crawler.command' start.sh vitest.config.ts
+          git diff --cached --quiet && { echo 'No comment changes to commit.'; exit 1; }
+          git commit -m 'Add comments'
+          git push origin HEAD:main
