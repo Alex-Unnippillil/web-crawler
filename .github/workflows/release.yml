@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['package.json']
+    # Packaging and acceptance-test fixes can retry an unpublished version too.
+    paths: ['package.json', 'scripts/package-portable.mjs', 'tests/portable_smoke.py', '.github/workflows/release.yml']
 permissions:
   contents: read
 concurrency:
@@ -76,6 +77,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -110,4 +112,4 @@ jobs:
           gh release create "v$VERSION" downloads/* \
             --target "${{ github.sha }}" \
             --title "Web Crawler Studio $VERSION" \
-            --notes "Local-first TypeScript crawler with browser GUI, pause/stop, saved history, inspection, link maps and exports. Download the ZIP matching your OS, extract all files, and open the launcher. Node.js 24 is bundled; no separate Node/npm installation is required. Builds are unsigned. Verify the SHA-256 sidecar and follow your OS security policy. Setup and usage instructions are in README.md."
+            --notes "Visual Atlas: interactive spiderweb with three layouts, route tracing and neighborhood focus; a URL-path tree; opt-in image galleries and searchable link, heading, resource and form catalogs; visual insights, compact density and keyboard navigation. The TypeScript CLI, saved history and exports remain supported. Download the ZIP matching your OS, extract all files, and open the launcher. Node.js 24 is bundled; no separate Node/npm installation is required. Use Explore visual demo to try the features locally. Builds are unsigned. Verify the SHA-256 sidecar and follow your OS security policy. Setup and usage instructions are in README.md and docs/VISUAL-ATLAS.md."

@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import time
 import urllib.request
+from urllib.parse import quote
 import zipfile
 
 parser = argparse.ArgumentParser()
@@ -57,8 +58,14 @@ with tempfile.TemporaryDirectory(prefix='crawler-portable-') as temporary:
                        headers={'X-Crawler-Token': token, 'Content-Type': 'application/json'})
             with urllib.request.urlopen(request, timeout=10) as response:
                 return response.read()
-        assert json.loads(api('/api/state'))['version'] == '3.0.0'
-        for asset in ('/app.js', '/styles.css', '/favicon.svg'):
+        # Compare the running app with both manifests, not a fixed release number.
+        expected = json.loads((Path(__file__).resolve().parents[1] / 'package.json').read_text())['version']
+        bundled = json.loads((root / 'package.json').read_text())['version']
+        assert bundled == expected, f'Archive {bundled} differs from source {expected}'
+        assert json.loads(api('/api/state'))['version'] == bundled
+        for asset in ('/app.js', '/styles.css', '/favicon.svg', '/atlas.js',
+                      '/atlas-model.js', '/atlas-graph.js', '/atlas-elements.js',
+                      '/atlas-shared.js', '/atlas.css'):
             with urllib.request.urlopen(url + asset, timeout=10) as response:
                 assert response.status == 200 and response.read()
         job = json.loads(api('/api/jobs', 'POST', {'demo': True}))
@@ -72,8 +79,29 @@ with tempfile.TemporaryDirectory(prefix='crawler-portable-') as temporary:
         records = json.loads(api('/api/jobs/' + job['id'] + '/export?format=json'))
         assert len(records) == 10 and 'first_paragraph' in records[0]
         assert b'Fieldnotes' in api('/api/jobs/' + job['id'] + '/export?format=csv')
+        # The portable build must also contain the richer fixture, extractor and preview service.
+        atlas = json.loads(api('/api/jobs', 'POST', {'demo': True, 'atlas': True}))
+        for attempt in range(300):
+            visual = json.loads(api('/api/jobs/' + atlas['id']))
+            if visual['status'] in ('completed', 'failed', 'stopped'):
+                break
+            time.sleep(0.1)
+        assert visual['status'] == 'completed', visual['status']
+        assert visual['pages'] == 37
+        pages = json.loads(api('/api/jobs/' + atlas['id'] + '/export?format=json'))
+        assert len(pages) == 37
+        for category in ('images', 'links', 'headings', 'resources', 'forms'):
+            assert any(page.get('elements', {}).get(category) for page in pages), category
+        image_urls = {image['src'] for page in pages for image in page['elements']['images']}
+        assert len(image_urls) == 8
+        for image_url in sorted(image_urls):
+            image = api('/api/jobs/' + atlas['id'] + '/image?url=' + quote(image_url, safe=''))
+            assert image.startswith(b'\x89PNG\r\n\x1a\n')
         print(json.dumps({'result': 'PASS', 'platform': os.name, 'archive': args.archive.name,
-                          'pages': saved['pages'], 'checks': ['bundled runtime', 'launcher', 'assets', 'real parser demo', 'exports']}))
+                          'version': bundled, 'pages': saved['pages'], 'atlas_pages': visual['pages'],
+                          'images': len(image_urls), 'checks': ['bundled runtime', 'launcher',
+                          'version manifests', 'all UI modules', 'real parser demo', 'exports',
+                          'visual fixture', 'element catalogs', 'raster previews']}))
     finally:
         if os.name == 'nt':
             subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'], check=False)
