@@ -1,3 +1,4 @@
+# Repository note: Configures automated dependency and GitHub Actions update checks.
 version: 2
 updates:
   - package-ecosystem: npm

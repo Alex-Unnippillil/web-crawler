@@ -1,3 +1,4 @@
+# Repository note: Runs cross-platform validation for crawler and GUI changes.
 name: Validate crawler and GUI
 on:
   push:

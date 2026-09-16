@@ -1,3 +1,4 @@
+<!-- Repository note: Explains optional scheduled monitoring and email-report operation. -->
 # Scheduled crawl reports on Ubuntu / WSL
 
 The monitor is a one-shot command. Installing this project does not register a cron job, deploy a server, or send email. Use a site you are authorized to crawl.

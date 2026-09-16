@@ -1,3 +1,4 @@
+// Repository note: Prepares dependencies/build output and launches the local Studio server for source installs.
 // Cross-platform launcher helper that builds the app, starts Studio, and opens the local browser URL.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';

@@ -1,3 +1,4 @@
+# Repository note: Keeps basic editor formatting consistent across contributors and operating systems.
 root = true
 
 [*]

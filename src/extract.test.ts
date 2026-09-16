@@ -1,3 +1,4 @@
+// Repository note: Vitest/jsdom tests for HTML metadata, links, images, and extraction behavior.
 // Exercises HTML extraction behavior against real jsdom documents and edge cases.
 
 import { expect, test } from 'vitest';

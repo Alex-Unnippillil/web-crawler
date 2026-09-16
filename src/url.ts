@@ -1,3 +1,4 @@
+// Repository note: Normalizes, validates, resolves, and scopes URLs used by the crawler.
 // Centralizes URL normalization, identity, scope checks, and tracking-parameter handling.
 
 /** Legacy exercise helper. Do not use this lossy representation as a crawl key. */

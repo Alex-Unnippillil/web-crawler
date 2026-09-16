@@ -1,3 +1,4 @@
+// Repository note: Configures the Vitest suite for the TypeScript crawler source.
 // Vitest configuration for the TypeScript extraction and compatibility test suites.
 
 import { defineConfig } from 'vitest/config';

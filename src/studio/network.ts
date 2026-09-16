@@ -1,3 +1,4 @@
+// Repository note: Applies local-GUI network safeguards, including public-address validation and DNS checks.
 // Applies GUI network-safety checks so local/private address space is not crawled accidentally.
 
 import { lookup } from 'node:dns/promises';

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Repository note: macOS launcher that prepares and starts the local Studio GUI.
 # macOS launcher: prepares dependencies when needed and starts the local Studio server.
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"

@@ -1,3 +1,4 @@
+# Repository note: Smoke-tests extracted portable distributions using their bundled runtime and launchers.
 # Smoke-tests an extracted portable release using the runtime and launchers shipped to end users.
 
 """Exercise an extracted portable release with its own Node runtime, not system npm."""

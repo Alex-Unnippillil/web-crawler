@@ -1,3 +1,4 @@
+// Repository note: Builds browser JavaScript from the erasable TypeScript UI source.
 // Converts browser TypeScript into dependency-free JavaScript after semantic checks run.
 
 import { stripTypeScriptTypes } from 'node:module';

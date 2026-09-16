@@ -1,3 +1,4 @@
+// Repository note: Runs the TypeScript command-line crawler and writes requested reports.
 // CLI entry point: parses user input, runs a crawl, and writes the requested reports.
 
 import { parseCLI, HELP } from './cli.js';

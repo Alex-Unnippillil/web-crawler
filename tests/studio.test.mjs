@@ -1,3 +1,4 @@
+// Repository note: Exercises the local Studio API, security boundaries, history, controls, and exports.
 // Integration tests for the Studio API, history, controls, exports, and network protections.
 
 import test from 'node:test';

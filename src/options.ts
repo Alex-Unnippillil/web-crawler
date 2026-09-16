@@ -1,3 +1,4 @@
+// Repository note: Defines and validates crawler defaults and runtime option limits.
 // Defines crawler defaults and validates option ranges before network work begins.
 
 import type { CrawlOptions } from './types.js';

@@ -1,3 +1,4 @@
+# Repository note: Excludes dependencies, build outputs, reports, secrets, and local state from Git.
 node_modules/
 dist/
 .env

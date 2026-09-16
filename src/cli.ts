@@ -1,3 +1,4 @@
+// Repository note: Parses the command-line interface while preserving the original Boot.dev invocation style.
 // Parses command-line arguments and converts them into validated crawler options.
 
 import { parseArgs } from 'node:util';

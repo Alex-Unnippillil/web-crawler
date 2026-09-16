@@ -1,3 +1,4 @@
+// Repository note: Defines shared TypeScript contracts for pages, failures, options, progress, and results.
 // Shared TypeScript contracts for crawl results, failures, progress events, and configuration.
 
 /** The five original Boot.dev fields remain present in every successful record. */

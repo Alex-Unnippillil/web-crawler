@@ -1,3 +1,4 @@
+# Repository note: Runs Chromium end-to-end checks against the real local Studio interface.
 # Browser-level acceptance test for the real Studio UI, controls, exports, themes, and responsive layout.
 
 """Full browser/real-jsdom integration test. Run after npm run build.

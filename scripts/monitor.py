@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Repository note: Optional POSIX monitoring helper for scheduled crawls and email notifications.
 # Optional scheduled monitoring helper that runs crawls and can email a concise change report.
 
 """One Linux/WSL monitoring iteration. Scheduling is configured separately.

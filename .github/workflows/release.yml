@@ -1,3 +1,4 @@
+# Repository note: Builds, smoke-tests, checksums, and publishes portable release archives.
 name: Build portable release
 on:
   workflow_dispatch:

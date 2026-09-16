@@ -1,3 +1,4 @@
+// Repository note: Generates repository sample reports from deterministic demonstration data.
 // Generates sample report assets used for documentation and manual inspection.
 
 import { writeReports } from '../dist/report.js';

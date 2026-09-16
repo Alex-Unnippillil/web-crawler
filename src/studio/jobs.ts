@@ -1,3 +1,4 @@
+// Repository note: Manages GUI crawl jobs, checkpoints, history, controls, and exports.
 // Manages GUI crawl jobs, pause/resume/stop controls, checkpoints, history, and exports.
 
 import { randomUUID } from 'node:crypto';

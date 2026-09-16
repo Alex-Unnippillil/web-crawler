@@ -1,3 +1,4 @@
+// Repository note: Creates the built-in local demonstration website used to explore Studio without contacting an external site.
 // Hosts the self-contained demo website used to exercise the GUI without crawling the public web.
 
 import { createServer } from 'node:http';

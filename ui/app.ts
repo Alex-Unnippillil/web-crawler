@@ -1,3 +1,4 @@
+// Repository note: Implements browser-side Studio interactions, views, filtering, history, controls, and exports.
 // Browser-side controller for Web Crawler Studio: forms, live progress, results, history, and exports.
 
 import type { Job, JobMeta } from '../src/studio/jobs.js';

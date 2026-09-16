@@ -1,3 +1,4 @@
+REM Repository note: Windows source launcher that prepares and starts the local Studio GUI.
 rem Windows launcher: prepares dependencies when needed and starts the local Studio server.
 @echo off
 setlocal

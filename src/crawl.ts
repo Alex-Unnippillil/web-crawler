@@ -1,3 +1,4 @@
+// Repository note: Provides the compatibility-facing crawl helpers and public crawl entry points.
 // Provides the compatibility wrapper that exposes the crawler through the original Boot.dev API.
 
 import { runCrawl } from './engine.js';

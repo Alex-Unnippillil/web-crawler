@@ -1,3 +1,4 @@
+// Repository note: Parses and evaluates robots.txt rules for crawler access decisions.
 // Parses robots.txt rules and evaluates whether crawler requests are permitted.
 
 interface Rule { allow: boolean; length: number; pattern: string; end: boolean }

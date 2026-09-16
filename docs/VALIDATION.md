@@ -1,3 +1,4 @@
+<!-- Repository note: Records validation coverage, release checks, and known testing limits. -->
 # Validation and release checks
 
 ## Validated source candidate — September 16, 2026

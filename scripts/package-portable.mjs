@@ -1,3 +1,4 @@
+// Repository note: Assembles portable application ZIPs with an official Node.js runtime.
 // Produces self-contained portable archives with a bundled official Node.js runtime.
 
 /** Build a redistributable ZIP with a verified official Node runtime.

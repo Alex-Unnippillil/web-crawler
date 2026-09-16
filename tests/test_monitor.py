@@ -1,3 +1,4 @@
+# Repository note: Tests the optional POSIX monitoring and notification helper.
 # Unit tests for the optional POSIX monitoring and email-report helper.
 
 import importlib.util

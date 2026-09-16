@@ -1,3 +1,4 @@
+<!-- Repository note: Records user-visible changes between project versions. -->
 # Changelog
 
 ## 3.0.0 — Web Crawler Studio

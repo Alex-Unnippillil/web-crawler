@@ -1,3 +1,4 @@
+// Repository note: Vitest compatibility tests for crawl helpers and the original course-facing API.
 // Verifies the legacy crawler-facing API remains compatible with the original project.
 
 import { expect, test } from "vitest";

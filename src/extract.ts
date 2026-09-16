@@ -1,3 +1,4 @@
+// Repository note: Extracts page metadata, links, images, and other crawl records from HTML.
 // Extracts normalized metadata, links, images, and page text from fetched HTML documents.
 
 import { JSDOM, VirtualConsole } from 'jsdom';

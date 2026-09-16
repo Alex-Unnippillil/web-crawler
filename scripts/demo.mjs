@@ -1,3 +1,4 @@
+// Repository note: Runs the deterministic local CLI demonstration and verifies its crawl output.
 // Runs a deterministic local crawl that validates the real parser and report generators end to end.
 
 import { createServer } from 'node:http';

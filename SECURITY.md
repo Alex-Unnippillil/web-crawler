@@ -1,3 +1,4 @@
+<!-- Repository note: Documents the local security model, reporting guidance, and crawler safety boundaries. -->
 # Security model
 
 Web Crawler Studio is a **single-user local application**, not an internet-facing service.

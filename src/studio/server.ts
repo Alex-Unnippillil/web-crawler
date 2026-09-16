@@ -1,3 +1,4 @@
+// Repository note: Hosts the loopback-only Studio interface and its authenticated local API.
 // Serves the local Web Crawler Studio UI and its authenticated loopback-only API endpoints.
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';

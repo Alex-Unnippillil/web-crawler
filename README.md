@@ -1,3 +1,4 @@
+<!-- Repository note: Primary setup, usage, download, and troubleshooting guide for Web Crawler Studio. -->
 <div align="center">
 
 # Web Crawler Studio
