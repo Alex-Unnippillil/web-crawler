@@ -1,0 +1,53 @@
+name: Validate hybrid engine candidate
+on:
+  push:
+    branches: [upgrade/hybrid-analysis-20260916]
+    paths: [.github/workflows/engineering-apply.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Reconstruct checked source patch on the reviewed base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git checkout -b upgrade/hybrid-workbench-20260916 d3b75b7e91fb9ddd749edd4e586943a42b72a3e8
+          python3 - <<'PY'
+          import urllib.request, os, base64, json, lzma, hashlib
+          from pathlib import Path
+          shas = ['909b07d838a1a0994c4edf7f12f9d567c7eabc3d', 'd631ad414a15d511579eacbca19001d518558bc6', 'd3ffdf08973dd10ee8704d6c9121445580d423ba', '900fa86020d1acad9e8733962a040384f714e7cf', '80f395083e632bd9c0e902eccced750b10053c5d']
+          chunks = []
+          for sha in shas:
+              req = urllib.request.Request('https://api.github.com/repos/Alex-Unnippillil/web-crawler/git/blobs/' + sha, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  blob = json.load(response)
+              chunks.append(base64.b64decode(blob['content']))
+          patch = lzma.decompress(b''.join(chunks))
+          assert hashlib.sha256(patch).hexdigest() == '5831685eecedbafae54c824f8fede5b1aa6471bd2ad207fc43df45a613e5dd3c'
+          Path(os.environ['RUNNER_TEMP'], 'engine.patch').write_bytes(patch)
+          PY
+          git apply --check "$RUNNER_TEMP/engine.patch"
+          git apply "$RUNNER_TEMP/engine.patch"
+      - name: Validate backward compatibility
+        run: |
+          npm ci
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Publish the validated engine slice to a feature branch
+        run: |
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          git add src scripts/package-portable.mjs package.json package-lock.json tests/studio.test.mjs 'Install Browser.cmd' install-browser.sh
+          git diff --cached --check
+          git commit -m 'feat: add guarded hybrid rendering and inspection evidence'
+          git push origin HEAD:refs/heads/upgrade/hybrid-workbench-20260916
