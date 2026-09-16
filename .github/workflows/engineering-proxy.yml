@@ -1,0 +1,57 @@
+name: Validate proxy socket lifecycle
+on:
+  push:
+    branches: [upgrade/hybrid-analysis-20260916]
+    paths: [.github/workflows/engineering-proxy.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REQUIRE_BROWSER: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Apply byte-verified socket fix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git checkout -b proxy-work origin/upgrade/hybrid-workbench-20260916
+          test "$(git rev-parse HEAD)" = '565d8b506e83a3fa535073b34bc546302ea86e2d'
+          python3 - <<'PY'
+          import urllib.request,os,base64,json,lzma,hashlib
+          from pathlib import Path
+          req=urllib.request.Request('https://api.github.com/repos/Alex-Unnippillil/web-crawler/git/blobs/36648d2e9a0a3925a63a9e75e80804bd6fb6a7ee',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(req,timeout=30) as response: blob=json.load(response)
+          raw=lzma.decompress(base64.b64decode(blob['content']))
+          assert hashlib.sha256(raw).hexdigest()=='eee8d8772bc96f20719e6a3a859048fc33f3e3f099385a31d0a1c689aba6ee3e'
+          for change in json.loads(raw):
+              assert change['path'] in {'src/crawler/browser.ts','tests/hybrid.test.mjs'}
+              path=Path(change['path']); before=path.read_bytes()
+              assert hashlib.sha256(before).hexdigest()==change['before']
+              lines=before.decode().splitlines(keepends=True)
+              for a,b,text in reversed(change['ops']): lines[a:b]=[text]
+              after=''.join(lines).encode()
+              assert hashlib.sha256(after).hexdigest()==change['after']
+              path.write_bytes(after)
+          PY
+      - name: Browser and regression checks
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          bash .github/prepare-browser-ci.sh
+          npm run check
+      - name: Publish validated fix for PR review
+        run: |
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          git add src/crawler/browser.ts tests/hybrid.test.mjs
+          git diff --cached --check
+          git commit -m 'fix: contain rejected browser proxy socket resets'
+          git push origin HEAD:refs/heads/upgrade/hybrid-proxy-validated-20260916
