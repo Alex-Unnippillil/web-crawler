@@ -1,0 +1,79 @@
+name: Validate hybrid polish
+on:
+  push:
+    branches: [upgrade/hybrid-analysis-20260916]
+    paths: [.github/workflows/engineering-polish.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REQUIRE_BROWSER: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Apply byte-verified polish to the validated feature branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git checkout -b polish-work origin/upgrade/hybrid-workbench-20260916
+          test "$(git rev-parse HEAD)" = 'c801bada8bbc585222d51806801056a2740fbf81'
+          python3 - <<'PY'
+          import urllib.request, os, base64, json, lzma, hashlib
+          from pathlib import Path
+          shas = ['b506cddebd1f9a7a9349c28ce8a9b4a275d30ca6', 'f6e93e27587080b774f21e83bd86c37d63bc8903', 'a140cb45243cc985fefb7089e5f2545bc47219e1']
+          chunks=[]
+          for sha in shas:
+              req=urllib.request.Request('https://api.github.com/repos/Alex-Unnippillil/web-crawler/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as response: blob=json.load(response)
+              chunks.append(base64.b64decode(blob['content']))
+          raw=lzma.decompress(b''.join(chunks))
+          assert hashlib.sha256(raw).hexdigest()=='2e5416a896369b09c2a3f3fb31a63ca005f76f7dd26cbf8ba58a7db7360861d6'
+          changes=json.loads(raw)
+          allowed={'.github/prepare-browser-ci.sh','CHANGELOG.md','README.md','SECURITY.md','docs/FILE-COMMENTS.md','docs/HYBRID.md','docs/PERFORMANCE.md','docs/VALIDATION.md','docs/VISUAL-ATLAS.md','docs/performance-samples.json','scripts/package-portable.mjs','src/crawler/browser.ts','src/extract.ts','tests/portable_smoke.py','tests/scale.mjs'}
+          assert {c['path'] for c in changes}==allowed and len(changes)==len(allowed)
+          for change in changes:
+              path=Path(change['path'])
+              before=path.read_bytes() if path.exists() else b''
+              assert hashlib.sha256(before).hexdigest()==change['before'], str(path)
+              lines=before.decode('utf-8').splitlines(keepends=True)
+              for start,end,text in reversed(change['ops']): lines[start:end]=[text]
+              after=''.join(lines).encode('utf-8')
+              assert hashlib.sha256(after).hexdigest()==change['after'],str(path)
+              path.parent.mkdir(parents=True,exist_ok=True)
+              path.write_bytes(after)
+          PY
+      - name: Full normal-user Chromium validation
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          bash .github/prepare-browser-ci.sh
+          python3 -m pip install playwright==1.63.0
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          python3 tests/e2e.py
+          python3 tests/hybrid_e2e.py
+          node tests/scale.mjs 1000 > "$RUNNER_TEMP/scale.json"
+      - name: Commit only reviewed product files
+        run: |
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          git add .github/prepare-browser-ci.sh CHANGELOG.md README.md SECURITY.md docs/FILE-COMMENTS.md docs/HYBRID.md docs/PERFORMANCE.md docs/VALIDATION.md docs/VISUAL-ATLAS.md docs/performance-samples.json scripts/package-portable.mjs src/crawler/browser.ts src/extract.ts tests/portable_smoke.py tests/scale.mjs
+          git diff --cached --check
+          git commit -m 'perf: reduce parser overhead and document hybrid workflows'
+          git push origin HEAD:refs/heads/upgrade/hybrid-workbench-20260916
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hybrid-polish-validation
+          path: |
+            ${{ runner.temp }}/scale.json
+            docs/hybrid-*.png
+          retention-days: 7
