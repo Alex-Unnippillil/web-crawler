@@ -1,0 +1,89 @@
+# Temporary candidate validation; source is published only after all checks pass.
+name: Validate Visual Atlas
+on:
+  push:
+    branches: [studio/visual-atlas-build-20260916]
+    paths: ['.atlas/**', '.github/workflows/atlas-validation.yml']
+permissions:
+  contents: write
+concurrency:
+  group: atlas-candidate
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Verify source transfer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, lzma
+          from pathlib import Path
+          encoded = ''.join(p.read_text() for p in sorted(Path('.atlas').glob('part-*.b64')))
+          compressed = base64.b64decode(encoded, validate=True)
+          assert hashlib.sha256(compressed).hexdigest() == '4021f4de9d0c6957d7249f28c63275b64014ae83a629697ede20c6afa1db8895'
+          data = lzma.decompress(compressed)
+          assert len(json.loads(data)) == 31
+          Path('/tmp/atlas-edits.json').write_bytes(data)
+          PY
+          git checkout -B atlas-work f80abe5ef7d2859c540294a24777f3701b2b8f4a
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          for item in json.loads(Path('/tmp/atlas-edits.json').read_bytes()):
+              p = Path(item['path'])
+              assert not p.is_absolute() and '..' not in p.parts
+              assert p.parts[0] not in {'.git', '.github', '.atlas', 'node_modules'}
+              old = p.read_text(encoding='utf-8') if p.exists() else ''
+              digest = lambda text: hashlib.sha256(text.encode('utf-8')).hexdigest()
+              assert digest(old) == item['base'], str(p) + ': base mismatch'
+              new = old
+              for a, b, text in reversed(item['ops']):
+                  new = new[:a] + text + new[b:]
+              assert digest(new) == item['result'], str(p) + ': result mismatch'
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text(new, encoding='utf-8')
+              print(p)
+          PY
+      - name: Install and check
+        run: |
+          npm ci
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Verify real browser interactions
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/e2e.py
+      - name: Record candidate patch
+        if: always()
+        run: |
+          git add -N src ui scripts tests docs examples README.md CHANGELOG.md SECURITY.md package.json package-lock.json
+          git diff --binary > /tmp/atlas-candidate.patch
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-browser-evidence
+          path: |
+            docs/*.png
+            /tmp/atlas-candidate.patch
+          retention-days: 7
+      - name: Commit validated source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src ui scripts tests docs examples README.md CHANGELOG.md SECURITY.md package.json package-lock.json
+          git diff --cached --check
+          git commit -m 'Visual update'
+          git push origin HEAD:refs/heads/studio/atlas-validated-20260916
+          git rev-parse HEAD
