@@ -1,0 +1,33 @@
+# Temporary development snapshot; never merged into the application branch.
+name: Prepare visual update
+on:
+  push:
+    branches: [studio/visual-atlas-build-20260916]
+    paths: [.github/workflows/atlas-development.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: f80abe5ef7d2859c540294a24777f3701b2b8f4a
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - run: |
+          npm ci
+          mkdir -p /tmp/atlas-tools/bin
+          cp "$(command -v node)" /tmp/atlas-tools/bin/node
+          cp -a "$(npm root -g)/npm" /tmp/atlas-tools/npm
+          git archive HEAD --output=/tmp/atlas-source.tar
+          tar -czf /tmp/atlas-development.tar.gz --exclude='.git' . -C /tmp atlas-tools atlas-source.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlas-development
+          path: /tmp/atlas-development.tar.gz
+          retention-days: 1
