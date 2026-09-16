@@ -1,0 +1,51 @@
+name: Engineering baseline
+on:
+  push:
+    branches: [upgrade/hybrid-analysis-20260916]
+    paths: [.github/workflows/engineering-baseline.yml]
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Validate existing application
+        run: |
+          npm ci
+          npm run check
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/e2e.py
+      - name: Assemble reproducible development snapshot
+        run: |
+          mkdir -p "$RUNNER_TEMP/engineering-tools"
+          npm install --prefix "$RUNNER_TEMP/engineering-tools" playwright@latest agent-browser@latest
+          cp "$(command -v node)" "$RUNNER_TEMP/engineering-tools/node"
+          cp -r "$RUNNER_TEMP/engineering-tools" .engineering-tools
+          tar --exclude=.git --exclude=.engineering-tools -czf "$RUNNER_TEMP/crawler-baseline.tar.gz" .
+          tar -czf "$RUNNER_TEMP/engineering-tools.tar.gz" .engineering-tools
+          tar -czf "$RUNNER_TEMP/chromium.tar.gz" -C "$HOME/.cache" ms-playwright
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engineering-baseline
+          path: ${{ runner.temp }}/crawler-baseline.tar.gz
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engineering-tools
+          path: ${{ runner.temp }}/engineering-tools.tar.gz
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engineering-chromium
+          path: ${{ runner.temp }}/chromium.tar.gz
+          retention-days: 3
