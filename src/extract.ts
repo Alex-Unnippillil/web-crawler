@@ -11,10 +11,14 @@ import type { ExtractedPageData, PageDetails } from './types.js';
 function text(element: Element | null): string {
   return element?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 }
-function withDocument<T>(html: string, url: string, read: (doc: Document) => T): T {
-  // Never execute remote scripts or load subresources. Silence CSS parser noise, not fetch errors.
-  const dom = new JSDOM(html, { url, virtualConsole: new VirtualConsole() });
-  try { return read(dom.window.document); } finally { dom.window.close(); }
+// One inert parser realm avoids allocating a Window and browsing context for every
+// response. DOMParser creates a fresh detached Document, so elements and selectors
+// never share page state. Scripts/resources remain disabled in the owning JSDOM.
+const parserRealm = new JSDOM('', { virtualConsole: new VirtualConsole() });
+const parser = new parserRealm.window.DOMParser();
+function withDocument<T>(html: string, _url: string, read: (doc: Document) => T): T {
+  const doc = parser.parseFromString(html, 'text/html');
+  try { return read(doc); } finally { doc.replaceChildren(); }
 }
 function urls(doc: Document, selector: string, attribute: string, baseURL: string): string[] {
   const effectiveBase = safeHTTP(doc.querySelector('base[href]')?.getAttribute('href') ?? '', baseURL) ?? baseURL;
@@ -52,7 +56,7 @@ export function extractPageData(html: string, pageURL: string): ExtractedPageDat
   return withDocument(html, pageURL, doc => extract(doc, pageURL));
 }
 export function extractPageDetails(html: string, pageURL: string, rules: ExtractionRule[] = []): PageDetails {
-  // The complete page is parsed once, rather than four separate JSDOM instances.
+  // Parse once in an inert, detached Document; resolve every URL against this page explicitly.
   return withDocument(html, pageURL, doc => {
     const elements = extractElements(doc, pageURL);
     return {
@@ -64,6 +68,6 @@ export function extractPageDetails(html: string, pageURL: string, rules: Extract
     title: text(doc.querySelector('title')),
     description: doc.querySelector('meta[name="description" i]')?.getAttribute('content')?.trim() ?? '',
     canonical_url: doc.querySelector('link[rel~="canonical" i]')?.hasAttribute('href')
-      ? safeHTTP(doc.querySelector('link[rel~="canonical" i]')!.getAttribute('href')!, doc.baseURI) ?? '' : '',
+      ? safeHTTP(doc.querySelector('link[rel~="canonical" i]')!.getAttribute('href')!, safeHTTP(doc.querySelector('base[href]')?.getAttribute('href') ?? '', pageURL) ?? pageURL) ?? '' : '',
   }; });
 }

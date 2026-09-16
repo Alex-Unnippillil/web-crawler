@@ -82,7 +82,17 @@ export class BrowserPool {
       };
       let browser: Browser;
       try { browser = await (this.factory ? this.factory(launch) : chromium.launch(launch)); }
-      catch (error) { throw new BrowserUnavailableError(`Chromium could not start: ${(error instanceof Error ? error.message : String(error)).slice(0, 600)}. Check browser installation and OS sandbox support; Fast HTTP remains available.`); }
+      catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        const hint = /no usable sandbox|user namespace|operation not permitted|sandbox.*failed/i.test(detail)
+          ? 'The OS denied Chromium sandbox namespaces. Run as a normal user and ask your administrator to approve the browser-specific sandbox policy; do not disable the sandbox.'
+          : /running as root|root without/i.test(detail)
+            ? 'Chromium cannot run safely as root. Start Studio as your normal user, without sudo.'
+            : /shared libraries|Host system is missing dependencies/i.test(detail)
+              ? 'Chromium needs OS libraries. Review npm exec playwright install-deps chromium with your administrator.'
+              : detail.slice(0, 600);
+        throw new BrowserUnavailableError(`Chromium could not start: ${hint} Fast HTTP remains available.`);
+      }
       if (this.stopped) { await browser.close(); throw new Error('Browser pool closed during launch.'); }
       this.browser = browser; this.uses = 0;
       browser.on('disconnected', () => { if (this.browser === browser) this.browser = undefined; });

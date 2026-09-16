@@ -1,6 +1,16 @@
 <!-- Repository note: Records user-visible changes between project versions. -->
 # Changelog
 
+## Unreleased — Hybrid inspection
+
+- Add Fast HTTP / Smart Hybrid / Full Browser with bounded, guarded Playwright contexts and optional Chromium installation.
+- Capture raw/rendered comparisons, screenshots, source, read-only network requests, console errors and typed extraction evidence.
+- Add sitemap/robots provenance, schema inspection, CSS extraction and same-origin frame/open-shadow discovery.
+- Add dedicated JavaScript, Links, Resources, Structured Data, Sitemaps, Robots and Custom workspaces; improve filters, exports, profiles, telemetry and inspector navigation.
+- Extend Visual Atlas with rendering/sitemap filters and markers without fabricating hyperlink edges.
+- Reduce measured transient parser overhead using isolated detached documents in an inert shared realm.
+- Add realistic local browser/security/restart/scale tests and actual implementation screenshots.
+
 ## 4.0.0 — Visual Atlas
 
 - Added a dense seven-view workspace with Insights, spiderweb explorer, URL paths, and element catalogs alongside Pages, Issues, and Activity.
