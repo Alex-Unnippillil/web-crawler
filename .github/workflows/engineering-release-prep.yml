@@ -56,22 +56,17 @@ jobs:
           assert text.count("version: '4.0.0'")==1
           path.write_text(text.replace("version: '4.0.0'", "version: '4.1.0'"))
           path=Path('CHANGELOG.md'); text=path.read_text()
-          assert '## Unreleased — Hybrid Workbench' in text
-          path.write_text(text.replace('## Unreleased — Hybrid Workbench','## 4.1.0 — Hybrid Workbench (2026-09-16)',1))
+          assert '## Unreleased — Hybrid inspection' in text
+          path.write_text(text.replace('## Unreleased — Hybrid inspection','## 4.1.0 — Hybrid Workbench (2026-09-16)',1))
           path=Path('README.md'); text=path.read_text()
-          assert '### Hybrid Workbench' in text
-          path.write_text(text.replace('### Hybrid Workbench','### Hybrid Workbench 4.1.0',1))
+          assert '# Web Crawler Studio\n' in text
+          path.write_text(text.replace('# Web Crawler Studio\n','# Web Crawler Studio\n### Hybrid Workbench 4.1.0\n',1))
           path=Path('docs/VALIDATION.md'); text=path.read_text().replace('165 Node tests','167 Node tests')
-          heading='## Hybrid Workbench — current engineering pass (2026-09-16)'
+          heading='## Hybrid inspection engineering pass'
           assert heading in text
-          section='''## Hybrid Workbench 4.1.0 release preparation
-
-          The reviewed feature commit `f513bb871dc4cf06b98fb649ce18b1b9327d880b` passed [Windows, macOS and Ubuntu browser/HTTP/API checks](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35162075652) and [four portable archive builds plus native Windows/Linux acceptance](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35162075656) before the additive 4.1.0 version was selected. The version metadata is validated again in PR #6 before merging. The main-branch release pipeline independently verifies the final versioned archives before publication.
-
-          Cross-platform testing found an unhandled reset on the deny proxy's accepted sockets. Each socket now owns its error/timeout/close lifecycle; shutdown explicitly destroys CONNECT sockets. Two regression tests exercise connection reset containment and CONNECT denial without changing the network policy. There is no global uncaught-exception suppression.
-
-          '''
-          section='\n'.join(line[10:] if line.startswith('          ') else line for line in section.split('\n'))
+          section='## Hybrid Workbench 4.1.0 release preparation\n\n'
+          section+='The reviewed feature commit `f513bb871dc4cf06b98fb649ce18b1b9327d880b` passed [Windows, macOS and Ubuntu browser/HTTP/API checks](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35162075652) and [four portable archive builds plus native Windows/Linux acceptance](https://github.com/Alex-Unnippillil/web-crawler/actions/runs/35162075656) before the additive 4.1.0 version was selected. The version metadata is validated again in PR #6 before merging. The main-branch release pipeline independently verifies the final versioned archives before publication.\n\n'
+          section+="Cross-platform testing found an unhandled reset on the deny proxy's accepted sockets. Each socket now owns its error/timeout/close lifecycle; shutdown explicitly destroys CONNECT sockets. Two regression tests exercise connection reset containment and CONNECT denial without changing the network policy. There is no global uncaught-exception suppression.\n\n"
           path.write_text(text.replace(heading,section+heading,1))
           PY
       - name: Validate the versioned candidate
