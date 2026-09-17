@@ -1,6 +1,15 @@
 <!-- Repository note: Records user-visible changes between project versions. -->
 # Changelog
 
+## 4.2.0 — Glass Workbench
+
+- Diagnose explicit access checkpoints without confusing them with transient rate limits or successful pages.
+- Add bounded connection checks, network-cause details, full vetted IPv4/IPv6 address selection and robots-checked canonical entry-host redirects.
+- Support owner-issued Vercel automation credentials in memory only, exact-origin scoped, with expiration, redaction and explicit local UI controls.
+- Introduce glass-inspired navigation, opaque reading surfaces, one responsive analysis tablist, clearer failure screens and reduced-transparency support.
+- Add real browser owner-flow acceptance and regression tests without changing the public network, TLS, robots or Chromium sandbox protections.
+
+
 ## 4.1.0 — Hybrid Workbench (2026-09-16)
 
 - Add Fast HTTP / Smart Hybrid / Full Browser with bounded, guarded Playwright contexts and optional Chromium installation.

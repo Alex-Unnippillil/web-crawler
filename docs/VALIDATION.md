@@ -54,3 +54,9 @@ New coverage includes all three modes, Smart escalation/non-escalation, client-s
 Actual new screenshots are captured by `tests/hybrid_e2e.py` at 1,600, 1,280, 900 and 390 pixels. Both old and new browser suites recorded no JavaScript console/page errors in the validated local run. Fixtures intentionally include errors; findings are not fabricated results from external websites. The container browser factory's root-only test sandbox override is not part of the production user-facing API.
 
 The feature PR's normal cross-platform CI and final merged workflow conclusions are authoritative for the published revision. Local measurements and their limitations are in [PERFORMANCE.md](PERFORMANCE.md); feature boundaries are in [HYBRID.md](HYBRID.md).
+
+## Glass Workbench 4.2.0
+
+The candidate passed 23 Vitest and 197 Node tests with real Chromium required (no missing-browser skips), the original GUI/Atlas suite, hybrid GUI acceptance, the CLI demo and five POSIX monitoring tests in the development environment. The new `tests/glass_e2e.py` also runs the real app at a local HTTP origin and exercises an explicit protected test fixture before and after owner-issued authentication, Chromium-generated content, secret-free evidence/settings, filtered export, one responsive navigation tablist, four widths, reduced transparency, dark theme and history reload. All browser errors are asserted absent. Fixture credentials are deliberately non-production strings; no user's Vercel secret is used or stored in the repository.
+
+Cross-platform and portable validation remain mandatory in the PR and release workflows. Their final commit-associated conclusions are the source of truth; these local results alone are not proof of Windows/macOS validation or a successful live crawl of unnippillil.com. The guarded transport's address-selection configuration and private-address rejection are covered with deterministic DNS/transport injection; real network conditions vary.

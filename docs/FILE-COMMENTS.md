@@ -124,3 +124,17 @@ Source files contain explanatory comments. JSON/CSV, runtime-version files, imag
 | `ui/workbench.css` | Dense analysis grids, inspector, waterfall, telemetry and responsive/reduced-motion styling. | Yes |
 | `ui/workbench.ts` | Paginated analysis tables, multiple filters, column selection, row selection and scoped CSV/JSON exports. | Yes |
 | `vitest.config.ts` | Configures the Vitest suite for the TypeScript crawler source. | Yes |
+| `src/crawler/diagnostics.ts` | Classifies explicit checkpoints, canonical entry transitions and bounded network errors. | Yes |
+| `src/studio/connection.ts` | Read-only, bounded connection reports using production crawl policies without saved history. | Yes |
+| `src/studio/owner-access.ts` | Exact-origin, memory-only owner authentication with expiry and literal-response redaction. | Yes |
+| `ui/connection.ts` | Connection reports and explicit owner credential dialog controls. | Yes |
+| `ui/glass.css` | Glass-inspired navigation with opaque content, responsive layout and accessibility fallbacks. | Yes |
+| `tests/connection.test.mjs` | Connection, redirect, authentication, redaction and network-policy regressions. | Yes |
+| `tests/glass-ui-server.mjs` | Controlled owner-auth fixture host for browser acceptance; cannot contact arbitrary sites. | Yes |
+| `tests/glass_e2e.py` | Actual GUI authentication, rendering, export, responsive and privacy acceptance. | Yes |
+| `docs/CONNECTIONS.md` | Owner setup, diagnosis, credential lifetime and compatibility guide. | Yes |
+| `docs/glass-access-needed.png` | Actual glass-workspace acceptance screenshot using controlled fixtures. | No — binary format preserved |
+| `docs/glass-connection.png` | Actual glass-workspace acceptance screenshot using controlled fixtures. | No — binary format preserved |
+| `docs/glass-workspace.png` | Actual glass-workspace acceptance screenshot using controlled fixtures. | No — binary format preserved |
+| `docs/glass-dark.png` | Actual glass-workspace acceptance screenshot using controlled fixtures. | No — binary format preserved |
+| `docs/glass-mobile.png` | Actual glass-workspace acceptance screenshot using controlled fixtures. | No — binary format preserved |
