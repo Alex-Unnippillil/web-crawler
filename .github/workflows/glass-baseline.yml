@@ -1,0 +1,46 @@
+name: Diagnose website crawl and prepare baseline
+on:
+  push:
+    branches: [upgrade/glass-engineering-20260917]
+    paths: [.github/workflows/glass-baseline.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: npm ci && npm run build
+      - name: Diagnose only user-authorized public website
+        run: |
+          mkdir -p /tmp/glass-baseline
+          node --input-type=module <<'JS' | tee /tmp/glass-baseline/diagnosis.txt
+          import { publicFetch } from './dist/studio/network.js';
+          import { runCrawl } from './dist/engine.js';
+          for (const target of ['https://unnippillil.com/robots.txt','https://www.unnippillil.com/robots.txt','https://unnippillil.com/','https://www.unnippillil.com/']) {
+            try {
+              const r = await publicFetch(target, {redirect:'manual',signal:AbortSignal.timeout(15000),headers:{'User-Agent':'CrawlerStudio/4.1','Accept':'text/html,text/plain'}});
+              const body = await r.text();
+              console.log(JSON.stringify({url:target,status:r.status,headers:Object.fromEntries([...r.headers].filter(([k])=>!['set-cookie'].includes(k))),body:body.slice(0,3500)}));
+            } catch(e) { console.log(JSON.stringify({url:target,error:String(e),cause:String(e.cause)})); }
+          }
+          const result=await runCrawl('https://unnippillil.com/',{crawlMode:'http',maxPages:3,maxConcurrency:1,delayMs:400,maxDurationMs:60000,retries:1},{fetchImpl:publicFetch,onLog:console.log});
+          console.log(JSON.stringify({summary:result.summary,errors:result.errors,warnings:result.warnings,robots:result.robots}));
+          JS
+      - name: Prepare credential-free source snapshot
+        run: |
+          git bundle create /tmp/glass-baseline/repository.bundle --all
+          tar -czf /tmp/glass-baseline/dependencies.tar.gz node_modules
+          cp package-lock.json /tmp/glass-baseline/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: glass-baseline
+          path: /tmp/glass-baseline/
+          retention-days: 3
