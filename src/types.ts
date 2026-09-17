@@ -53,6 +53,9 @@ export interface CrawlFailure {
   message: string;
   attempts: number;
   status_code?: number;
+  stage?: 'page' | 'robots' | 'sitemap';
+  provider?: string;
+  guidance?: string;
 }
 export interface CrawlOptions {
   mode: CrawlMode;
@@ -100,6 +103,8 @@ export interface CrawlResult {
   discovery?: DiscoveryInfo;
   telemetry?: CrawlTelemetry;
   start_url: string;
+  effective_start_url?: string;
+  scope_redirects?: { from: string; to: string; status: number }[];
   started_at: string;
   finished_at: string;
   duration_ms: number;

@@ -13,6 +13,16 @@
 
 Enter a URL, choose a crawl mode, and explore pages, links, images, resources, structured data, and site architecture. Smart mode uses lightweight HTTP first and escalates sparse application shells to a reusable Chromium browser only when needed. No cloud account, API key, hosted database, or subscription is required.
 
+## Connection fixes and glass workspace
+
+**Version 4.2.0** adds an explicit connection check, actionable access/DNS/TLS diagnostics, safe canonical entry redirects, and IPv4/IPv6 address selection. An owner-issued Vercel automation credential can be entered **locally** for one exact HTTPS origin and is held only in memory for up to one hour. This is supported owner authentication, not a CAPTCHA/challenge solver. A firewall may still refuse a request; the app explains that instead of displaying empty results as a successful crawl.
+
+The glass-inspired interface replaces duplicate desktop navigation with one sidebar, keeps data surfaces opaque, and adds reduced-transparency support. The existing three crawl modes, spiderweb, image explorer, custom extraction, profiles, evidence and CLI remain available.
+
+![Glass workspace on an owner-authorized test fixture](docs/glass-workspace.png)
+
+[Connect your own Vercel site and understand the diagnostics](docs/CONNECTIONS.md). **Never paste an automation secret into GitHub or chat.** Enter it only in the local app's Owner access dialog. Screenshots use controlled local test fixtures, not a claimed live crawl of unnippillil.com.
+
 ## What is new
 
 - **Three crawl modes:** Fast HTTP, Smart Hybrid, and Full Browser, with a processing-method label and escalation reason for every page.

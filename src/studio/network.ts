@@ -24,7 +24,8 @@ export function isPublicAddress(address: string): boolean {
 }
 
 /** Resolve and pin each request to the checked IP: no DNS-check/fetch rebinding gap. */
-export const publicFetch: typeof fetch = async (input, init = {}) => {
+export function createPublicFetch(deps: { resolve?: typeof lookup; http?: typeof httpRequest; https?: typeof httpsRequest } = {}): typeof fetch {
+return async (input, init = {}) => {
   const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Use a public HTTP(S) URL without credentials.');
   const signal = init.signal;
@@ -33,7 +34,7 @@ export const publicFetch: typeof fetch = async (input, init = {}) => {
   const addresses = await new Promise<{ address: string; family: number }[]>((resolve, reject) => {
     const abort = () => reject(signal?.reason ?? new Error('DNS lookup cancelled.'));
     signal?.addEventListener('abort', abort, { once: true });
-    void lookup(hostname, { all: true, verbatim: true }).then(resolve, reject)
+    void (deps.resolve ?? lookup)(hostname, { all: true, verbatim: true }).then(resolve, reject)
       .finally(() => signal?.removeEventListener('abort', abort));
     if (signal?.aborted) abort();
   });
@@ -41,13 +42,14 @@ export const publicFetch: typeof fetch = async (input, init = {}) => {
   if (!addresses.length || addresses.some(a => !isPublicAddress(a.address))) {
     throw new Error('Private, loopback and reserved network targets are blocked in the GUI. Use the built-in demo for a local test.');
   }
-  const selected = addresses[0]!;
+  // Node's Happy Eyeballs connector races the vetted IPv4/IPv6 set. Every fallback stays DNS-pinned.
+  const selected = addresses.find(a => a.family === 4) ?? addresses[0]!;
   return new Promise<Response>((resolve, reject) => {
     const headers = { ...Object.fromEntries(new Headers(init.headers).entries()), 'Accept-Encoding': 'identity' };
-    const req = (url.protocol === 'https:' ? httpsRequest : httpRequest)(url, {
-      method: 'GET', headers, agent: false,
+    const req = (url.protocol === 'https:' ? deps.https ?? httpsRequest : deps.http ?? httpRequest)(url, {
+      method: 'GET', headers, agent: false, ...{ autoSelectFamily: true, autoSelectFamilyAttemptTimeout: 250 },
       lookup: ((_host: string, options: { all?: boolean }, callback: (...args: unknown[]) => void) => {
-        if (options?.all) callback(null, [selected]); else callback(null, selected.address, selected.family);
+        if (options?.all) callback(null, addresses); else callback(null, selected.address, selected.family);
       }) as never,
     }, res => {
       const responseHeaders = new Headers();
@@ -72,3 +74,5 @@ export const publicFetch: typeof fetch = async (input, init = {}) => {
     if (signal?.aborted) abort(); else req.end();
   });
 };
+}
+export const publicFetch: typeof fetch = createPublicFetch();

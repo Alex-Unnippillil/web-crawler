@@ -9,11 +9,19 @@ The server listens on `127.0.0.1`, validates Host and Origin, rejects cross-site
 
 HTTP crawling, image previews and browser-intercepted requests use the GUI's public-address checks and DNS-pinned transport. Private/reserved IPv4/IPv6, unsafe schemes, credential-bearing URLs and unsafe redirect destinations are rejected. The built-in demonstration has an explicit exact-loopback-origin exception created by the app, not a general permission to crawl local services. The developer CLI is not a substitute for this GUI boundary.
 
+## Optional owner-issued automation authentication
+
+Owner access supports Vercel's documented project automation secret for an exact HTTPS origin. It is configured through the session-protected local API, lives only in server memory for one hour, and is cleared on shutdown. It is never part of persisted job options/profiles/state. The browser never receives it as a JavaScript variable; the guarded transport inserts its header after origin validation. CDN/redirect destinations do not inherit the secret. Literal response reflections are redacted before extraction/storage, including chunk boundaries. Do not treat arbitrary encoded website output as proven secret-free, and review exports before sharing.
+
+Connection checks share the crawl's robots, DNS, TLS and redirect policies and have separate time/request limits. They cannot overlap another check or crawl. Explicit security checkpoints stop without automatic retries; ordinary transient rate limits retain bounded backoff. The only origin expansion is a verified seed-page www/apex or HTTPS upgrade, followed by destination robots verification. The app never changes firewall rules or imports a user's general browser session.
+
+See [CONNECTIONS.md](docs/CONNECTIONS.md) for lifetime, revocation and supported-host boundaries. This feature is owner-authorized access, not CAPTCHA solving or security-control circumvention.
+
 ## Chromium boundary
 
 Production launches explicitly enable the Chromium sandbox. Do not run Studio as root. There is no user-facing switch that disables TLS verification or the browser sandbox. Browser tests may inject a fixture-only browser factory in a root-owned isolated test container; the production launcher/API never accepts that hook from user input.
 
-One browser is reused with bounded isolated contexts; pages/contexts/listeners are closed after each render, cancellation and shutdown. Contexts are recycled rather than sharing a user's browser profile. Only cookies generated during that page context may be used for same-origin requests; credentials or profiles are not imported.
+One browser is reused with bounded isolated contexts; pages/contexts/listeners are closed after each render, cancellation and shutdown. Contexts are recycled rather than sharing a user's browser profile. Only cookies generated during that page context may be used for same-origin requests; normal browser profiles are not imported. Optional owner-issued automation authentication is scoped separately below.
 
 All intercepted traffic is GET-only and fulfilled through the guarded Node transport. Non-GET traffic, form submissions, downloads, permissions, service workers and WebSockets are blocked. Document/frame navigation is additionally same-origin, path-boundary and robots checked. Resource requests may target public external hosts and are accounted for separately; discovered API endpoints are **not** automatically added to the page frontier.
 

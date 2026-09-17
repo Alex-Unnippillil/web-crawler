@@ -20,7 +20,7 @@ export function buildIndex(result:CrawlResult):AtlasIndex {
   const pages=Object.values(result.pages),aliases=new Map<string,string>();
   for(const p of pages){aliases.set(normalize(p.requested_url),normalize(p.url));aliases.set(normalize(p.url),normalize(p.url));}
   const identity=(u:string)=>aliases.get(normalize(u))??normalize(u);
-  const origin=new URL(result.start_url).origin, root=identity(result.start_url);
+  const root=identity(result.effective_start_url ?? result.start_url), origin=new URL(root).origin;
   const byID=new Map<string,MapNode>();
   const add=(url:string,state:NodeState,depth=-1,status=0,title='')=>{
     const id=identity(url);if(byID.has(id))return;

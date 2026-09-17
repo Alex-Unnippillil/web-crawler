@@ -51,6 +51,10 @@ The local acceptance environment in this engineering pass ran as root inside a c
 
 ## Explicit omissions
 
-No CAPTCHA/challenge bypass, login automation, authenticated profile import, proxy evasion, TLS disabling, fingerprint spoofing, form submission, arbitrary scripts/XPath, POST APIs, service workers or WebSockets. Context cookies are page-context-local, not a persistent cross-page authenticated session. JavaScript-driven sites that depend on these blocked features can remain incomplete. Smart detection is heuristic, not universal framework support.
+No CAPTCHA/challenge solving, login automation, authenticated profile import, proxy evasion, TLS disabling, fingerprint spoofing, form submission, arbitrary scripts/XPath, POST APIs, service workers or WebSockets. Context cookies are page-context-local, not a persistent cross-page authenticated session. JavaScript-driven sites that depend on these blocked features can remain incomplete. Smart detection is heuristic, not universal framework support.
 
 No hard Chromium RSS cap, native DevTools-equivalent timing fidelity, perfect accessibility certification, full semantic DOM diff, fully virtualized million-row grid, resumed crawling after restart or automatic database migration. Tables are bounded/paginated and graphs explicitly capped. Targeted exports, schema inspection, CSS rules and local profiles are complete first implementations rather than placeholders for a paid/cloud service.
+
+## Glass Workbench compatibility update
+
+Owner-issued, exact-origin Vercel automation credentials are optionally supported through the guarded transport without importing a browser profile. The initial canonical host can change only within the narrow, robots-checked rules described in [CONNECTIONS.md](CONNECTIONS.md). Other hybrid limits remain unchanged.

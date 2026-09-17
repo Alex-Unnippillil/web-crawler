@@ -52,6 +52,7 @@ jobs:
           python3 -m pip install playwright==1.63.0
           python3 tests/e2e.py
           python3 tests/hybrid_e2e.py
+          python3 tests/glass_e2e.py
           node tests/scale.mjs 1000 > "$RUNNER_TEMP/scale.json"
       - name: Preserve actual screenshots and scale measurements
         if: always() && runner.os == 'Linux'
@@ -60,5 +61,6 @@ jobs:
           name: gui-and-scale-${{ github.run_id }}
           path: |
             docs/hybrid-*.png
+            docs/glass-*.png
             ${{ runner.temp }}/scale.json
           retention-days: 7
