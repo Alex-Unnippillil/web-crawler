@@ -1,0 +1,25 @@
+# Temporary development-only snapshot transport; not part of the product PR.
+name: Prepare interaction baseline
+on:
+  push:
+    branches: [engineering/interaction-studio-20260917]
+    paths: [.github/workflows/interaction-baseline.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: |
+          git checkout 97e32177a484df9109adb189c1f7fb2867e9f26b
+          git bundle create "$RUNNER_TEMP/interaction-baseline.bundle" HEAD
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: interaction-baseline
+          path: ${{ runner.temp }}/interaction-baseline.bundle
+          retention-days: 3
