@@ -69,7 +69,7 @@ export async function startStudio(config: { port?: number; directory?: string; o
         const received = Buffer.from(String(req.headers['x-crawler-token'] ?? ''));
         const secret = Buffer.from(token);
         if (received.length !== secret.length || !timingSafeEqual(received, secret)) { send(res, 403, { error: 'Session expired. Refresh this page.' }); return; }
-        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.2.0', browser: browserState }); return; }
+        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.3.0', browser: browserState }); return; }
         if (url.pathname === '/api/access' && req.method === 'GET') { send(res, 200, access.state()); return; }
         if (url.pathname === '/api/access' && ['POST', 'DELETE'].includes(req.method ?? '')) {
           if (store.busy() || probing) { send(res, 409, { error: 'Stop the active crawl or connection check before changing owner access.' }); return; }
@@ -155,6 +155,9 @@ export async function startStudio(config: { port?: number; directory?: string; o
         '/telemetry.js': ['ui-dist/telemetry.js', 'text/javascript'],
         '/connection.js': ['ui-dist/connection.js', 'text/javascript'],
         '/glass.css': ['ui/glass.css', 'text/css'],
+        '/interaction.css': ['ui/interaction.css', 'text/css'],
+        '/interaction.js': ['ui-dist/interaction.js', 'text/javascript'],
+        '/page-grid.js': ['ui-dist/page-grid.js', 'text/javascript'],
         '/workbench.css': ['ui/workbench.css', 'text/css'],
         '/atlas.css': ['ui/atlas.css', 'text/css'],
       };

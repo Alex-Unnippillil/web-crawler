@@ -45,8 +45,8 @@ test('serves real interface with CSP and a session token', async t => {
   const { url, token } = await setup(t); const res = await fetch(url);
   assert.equal(res.status, 200); assert.equal(token.length, 64);
   assert.match(res.headers.get('content-security-policy'), /frame-ancestors 'none'/);
-  assert.match(await res.text(), /A clearer view of the web/);
-  for (const path of ['/styles.css', '/app.js', '/favicon.svg']) assert.equal((await fetch(url + path)).status, 200);
+  assert.match(await res.text(), /Inspect a website/);
+  for (const path of ['/styles.css', '/app.js', '/favicon.svg', '/interaction.css', '/interaction.js', '/page-grid.js']) assert.equal((await fetch(url + path)).status, 200);
 });
 test('API denies unauthenticated requests and unrecognized Host', async t => {
   const { url, api } = await setup(t);

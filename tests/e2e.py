@@ -14,7 +14,9 @@ import tempfile
 import time
 import urllib.request
 from playwright.sync_api import sync_playwright, expect
+from ui_actions import start_sample
 from atlas_e2e import run_visual_checks
+from interaction_e2e import run_interaction_checks
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
@@ -45,7 +47,7 @@ with tempfile.TemporaryDirectory(prefix="crawler-e2e-") as directory:
             page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
             page.goto(url, wait_until="networkidle")
             page.screenshot(path=str(DOCS / "studio-welcome.png"), full_page=True)
-            page.get_by_role("button", name="Try a local demo", exact=True).click()
+            start_sample(page, "demo")
             expect(page.locator("#metric-pages")).not_to_have_text("0")
             page.get_by_role("button", name="Pause", exact=True).click()
             expect(page.locator("#crawl-status")).to_have_text("Paused")
@@ -101,6 +103,7 @@ with tempfile.TemporaryDirectory(prefix="crawler-e2e-") as directory:
             expect(page.locator("#metric-pages")).to_have_text("10")
             assert page.locator("html").get_attribute("data-theme") == "light"
             run_visual_checks(page, DOCS)
+            run_interaction_checks(page, DOCS)
             assert errors == [], errors
             print(json.dumps({"result": "PASS", "pages": 10, "issues": 4, "browser_errors": errors,
                               "checks": ["actual HTTP origin", "real jsdom parser", "demo", "pause/resume", "search", "inspector", "issues", "graph keyboard", "CSV export", "themes", "history", "mobile", "presets", "reload"]}, indent=2))

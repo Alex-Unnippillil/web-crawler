@@ -100,7 +100,9 @@ with tempfile.TemporaryDirectory(prefix='crawler-glass-') as directory:
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), width
                 if width == 390: page.screenshot(path=str(ROOT/'docs/glass-mobile.png'),full_page=True)
             page.set_viewport_size({'width':1440,'height':1000})
-            page.locator('[data-action="glass"]').click()
+            page.get_by_role('button',name='Workspace settings',exact=True).click()
+            page.locator('#settings-dialog [data-action="glass"]').click()
+            page.get_by_role('button',name='Close workspace settings',exact=True).click()
             assert page.locator('html').get_attribute('data-transparency') == 'reduce'
             assert page.locator('.sidebar').evaluate('(e)=>getComputedStyle(e).backdropFilter') == 'none'
             page.locator('[data-action="theme"]').filter(visible=True).first.click()

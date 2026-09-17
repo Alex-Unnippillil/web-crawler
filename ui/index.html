@@ -1,51 +1,1761 @@
-<!doctype html>
+<!DOCTYPE html>
 <!-- Repository note: Defines the accessible semantic structure of the Web Crawler Studio interface. -->
 <!-- Main application shell for the local Web Crawler Studio interface. -->
 <html lang="en">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark"><meta name="session-token" content="__SESSION_TOKEN__">
-  <title>Web Crawler Studio</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/atlas.css"><link rel="stylesheet" href="/workbench.css"><link rel="stylesheet" href="/glass.css">
-  <script type="module" src="/app.js"></script>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to results</a>
-<aside class="sidebar">
-  <a class="brand" href="#workspace"><img src="/favicon.svg" alt="" width="38" height="38"><span>Web Crawler<small>STUDIO</small></span></a>
-  <button class="button primary new-crawl" data-action="new"><span data-icon="plus"></span>New crawl<kbd>N</kbd></button>
-  <div class="nav-label">WORKSPACE</div>
-  <nav aria-label="Main navigation"><button class="nav-item selected" data-view="workspace"><span data-icon="grid"></span>Overview</button><button class="nav-item" data-view="history"><span data-icon="clock"></span>Crawl history<span class="nav-count" id="history-count">0</span></button></nav>
-  <nav id="workspace-navigation" aria-label="Analysis sections"></nav><div class="nav-label recent-label">RECENT CRAWLS</div><div id="recent" class="recent"></div>
-  <div class="sidebar-bottom"><button class="nav-item" data-action="check-connection"><span data-icon="globe"></span>Connection check</button><button class="nav-item" data-action="owner-access"><span data-icon="shield"></span>Owner access</button><button class="nav-item" data-action="glass"><span data-icon="layers"></span><span id="glass-label">Reduce transparency</span></button><div class="local-card"><span class="status-dot"></span><strong>Local workspace</strong><p>No account. No cloud upload.<br>Your crawl data stays here.</p></div><button class="nav-item" data-action="help"><span data-icon="help"></span>Help &amp; shortcuts</button><button class="nav-item" data-action="theme"><span data-icon="sun"></span><span id="theme-label">Switch to dark mode</span></button><div class="version">TYPESCRIPT ENGINE <span>HYBRID INSPECTION</span></div></div>
-</aside>
-<div class="app-shell">
-  <header class="topbar"><div class="breadcrumb"><span data-icon="layers"></span><span>Workspace</span><span class="slash">/</span><strong id="breadcrumb-current">Overview</strong></div><div class="topbar-right"><button class="button atlas-quick" data-action="commands">Jump to… <kbd>Ctrl K</kbd></button><button class="button density-button" data-action="density" id="density-label">Compact</button><span id="connection" class="connection"><i></i>Connected locally</span><button class="button subtle mobile-new" data-action="new">New crawl</button><button class="icon-button" data-action="help" aria-label="Open help"><span data-icon="help"></span></button></div></header>
-  <div id="connection-banner" class="connection-banner" hidden role="alert"></div>
-  <main id="main" tabindex="-1">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <meta content="light dark" name="color-scheme"/>
+  <meta name="session-token" content="__SESSION_TOKEN__"/>
+  <title>
+   Web Crawler Studio
+  </title>
+  <link href="/favicon.svg" rel="icon" type="image/svg+xml"/>
+  <link href="/styles.css" rel="stylesheet"/>
+  <link href="/atlas.css" rel="stylesheet"/>
+  <link href="/workbench.css" rel="stylesheet"/>
+  <link href="/glass.css" rel="stylesheet"/>
+  <script src="/app.js" type="module">
+  </script>
+  <link href="/interaction.css" rel="stylesheet"/>
+ </head>
+ <body>
+  <a class="skip-link" href="#main">
+   Skip to results
+  </a>
+  <aside class="sidebar" id="app-sidebar">
+   <a aria-label="Web Crawler Studio home" class="brand" data-action="home" href="#workspace">
+    <img alt="" height="38" src="/favicon.svg" width="38"/>
+    <span>
+     Web Crawler
+     <small>
+      STUDIO
+     </small>
+    </span>
+   </a>
+   <button class="button primary new-crawl" data-action="new">
+    <span data-icon="plus">
+    </span>
+    New crawl
+    <kbd>
+     N
+    </kbd>
+   </button>
+   <nav aria-label="Workspace navigation" class="library-navigation">
+    <button aria-label="Home" class="nav-item" data-action="home" id="home-button">
+     <span data-icon="grid">
+     </span>
+     <span class="nav-text">
+      Home
+     </span>
+    </button>
+    <button aria-label="Crawl history" class="nav-item" data-view="history" title="Crawl history">
+     <span data-icon="clock">
+     </span>
+     <span class="nav-text">
+      Crawl history
+     </span>
+     <span class="nav-count" id="history-count">
+      0
+     </span>
+    </button>
+   </nav>
+   <div class="sidebar-scroll">
+    <nav aria-label="Analysis sections" id="workspace-navigation">
+    </nav>
+    <div class="nav-label recent-label">
+     RECENT CRAWLS
+    </div>
+    <div class="recent" id="recent">
+    </div>
+   </div>
+   <div class="sidebar-bottom">
+    <button aria-label="Connection check" class="nav-item" data-action="check-connection" title="Connection check">
+     <span data-icon="globe">
+     </span>
+     <span class="nav-text">
+      Connection check
+     </span>
+    </button>
+    <button aria-label="Owner access" class="nav-item" data-action="owner-access" title="Owner access">
+     <span data-icon="shield">
+     </span>
+     <span class="nav-text">
+      Owner access
+     </span>
+    </button>
+    <div class="sidebar-brandnote">
+     <span class="status-dot">
+     </span>
+     <span>
+      Local-first. Yours to explore.
+     </span>
+    </div>
+   </div>
+  </aside>
+  <div class="app-shell">
+   <header class="topbar">
+    <div class="topbar-location">
+     <button aria-controls="app-sidebar" aria-expanded="true" aria-label="Collapse sidebar" class="icon-button sidebar-toggle" data-action="sidebar" id="sidebar-toggle" title="Collapse sidebar">
+      <span data-icon="sidebar">
+      </span>
+     </button>
+     <div class="breadcrumb">
+      <span>
+       Workspace
+      </span>
+      <span class="slash">
+       /
+      </span>
+      <strong id="breadcrumb-current">
+       Home
+      </strong>
+     </div>
+    </div>
+    <div class="topbar-right">
+     <button class="button command-trigger" data-action="commands">
+      <span data-icon="search">
+      </span>
+      <span>
+       Search &amp; commands
+      </span>
+      <kbd>
+       Ctrl K
+      </kbd>
+     </button>
+     <span class="connection" id="connection">
+      <i>
+      </i>
+      Connected locally
+     </span>
+     <span aria-hidden="true" class="toolbar-divider">
+     </span>
+     <button aria-label="Switch to dark mode" class="icon-button" data-action="theme" id="theme-toggle" title="Switch theme">
+      <span data-icon="sun">
+      </span>
+     </button>
+     <button aria-label="Workspace settings" class="icon-button" data-action="settings" title="Workspace settings">
+      <span data-icon="settings">
+      </span>
+     </button>
+     <button class="button primary mobile-new" data-action="new">
+      <span data-icon="plus">
+      </span>
+      New crawl
+     </button>
+    </div>
+   </header>
+   <div class="connection-banner" hidden="" id="connection-banner" role="alert">
+   </div>
+   <main id="main" tabindex="-1">
     <section id="workspace-view">
-      <div class="page-heading"><div><div class="eyebrow">YOUR LOCAL RESEARCH WORKSPACE</div><h1>A clearer view of the web.</h1><p>Explore its connections, discover its assets, and see the details that matter.</p></div><div class="page-heading-actions"><button class="button" data-action="demo"><span data-icon="play"></span>Try a local demo</button><button class="button primary" data-action="atlas-demo"><span data-icon="network"></span>Explore visual demo</button><button class="button" data-action="hybrid-demo">Hybrid lab</button></div></div>
-      <section id="welcome" class="welcome-panel"><div class="welcome-copy"><span class="badge mint">MEET YOUR CRAWLER</span><h2>Explore deeper.<br>See the whole picture.</h2><p>One workspace for pages, images, connections, and JavaScript. Check access first, then turn your website into an interactive map.</p><div class="welcome-actions"><button class="button" data-action="check-connection"><span data-icon="globe"></span>Check a website</button><button class="button primary" data-action="new">Start your first crawl<span data-icon="arrow"></span></button><button class="button text-button" data-action="demo">Explore the demo</button></div><div class="welcome-proof"><span data-icon="shield"></span>Respectful defaults. Bounded crawls. Local results.</div></div><div class="map-illustration" aria-hidden="true"><svg viewBox="0 0 500 280"><defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="currentColor" opacity=".16"/></pattern></defs><rect width="500" height="280" fill="url(#dots)"/><g fill="none" stroke="currentColor" opacity=".3"><path d="M245 130 110 65M245 130 395 60M245 130 395 208M245 130 105 210M110 65 105 210M395 60 395 208"/></g><g class="diagram-node"><rect x="190" y="102" width="115" height="58" rx="12"/><rect x="60" y="41" width="105" height="47" rx="9"/><rect x="342" y="36" width="105" height="47" rx="9"/><rect x="53" y="188" width="105" height="47" rx="9"/><rect x="342" y="185" width="105" height="47" rx="9"/></g><g class="diagram-text" text-anchor="middle"><text x="248" y="135">your-website.com</text><text x="112" y="69">/guides</text><text x="395" y="65">/about</text><text x="105" y="217">/journal</text><text x="395" y="214">/contact</text></g><g fill="#15836e"><circle cx="180" cy="99" r="4"/><circle cx="322" cy="168" r="4"/><circle cx="320" cy="95" r="4"/></g></svg><span class="map-caption"><i></i>A little structure. A lot of clarity.</span></div></section>
-      <section id="crawl-section" hidden>
-        <div class="crawl-heading"><div class="site-avatar" id="site-avatar">W</div><div class="crawl-identity"><div class="crawl-title"><h2 id="crawl-name">Untitled crawl</h2><span id="crawl-status" class="badge" role="status" aria-live="polite"></span></div><p id="crawl-url"></p></div><div class="crawl-actions"><button id="pause-button" class="button" data-action="pause"><span data-icon="pause"></span>Pause</button><button id="stop-button" class="button danger-ghost" data-action="stop"><span data-icon="stop"></span>Stop</button><button id="rerun-button" class="button" data-action="rerun"><span data-icon="refresh"></span>Run again</button><button id="export-button" class="button primary" data-action="export"><span data-icon="download"></span>Export results</button></div></div>
-        <div class="progress-card"><div class="progress-line"><span id="progress-message">Preparing the crawl…</span><span id="progress-numbers"></span></div><progress id="crawl-progress" value="0" max="100" aria-label="URL budget used"></progress><div class="progress-foot"><span id="progress-detail"></span><span id="elapsed"></span></div></div>
-        <section id="connection-action-card" class="connection-action-card" hidden aria-labelledby="connection-action-title"><span class="connection-emblem" aria-hidden="true">↗</span><div><span class="eyebrow">CONNECTION DIAGNOSTICS</span><h3 id="connection-action-title"></h3><p id="connection-action-message"></p><p id="connection-action-guidance"></p><div class="connection-actions"><button class="button primary" data-action="check-connection">Check connection</button><button class="button" data-action="owner-access">Owner access</button></div></div></section><div id="crawl-telemetry"></div><div id="job-notice" class="notice" hidden></div>
-        <div class="metrics"><article class="metric"><div><span>Pages crawled</span><span data-icon="file"></span></div><strong id="metric-pages">0</strong><small>Successfully read HTML pages</small></article><article class="metric"><div><span>Internal links</span><span data-icon="link"></span></div><strong id="metric-internal">0</strong><small>Unique same-origin URLs found</small></article><article class="metric"><div><span>External links</span><span data-icon="external"></span></div><strong id="metric-external">0</strong><small>Discovered, not fetched</small></article><article class="metric"><div><span>Things to review</span><span data-icon="alert"></span></div><strong id="metric-issues">0</strong><small>Fetch errors &amp; content checks</small></article><article class="metric"><div><span>Images</span><span data-icon="grid"></span></div><strong id="metric-images">0</strong><small>Unique captured image URLs</small></article><article class="metric"><div><span>Resources</span><span data-icon="code"></span></div><strong id="metric-resources">0</strong><small>Scripts, styles, media &amp; files</small></article></div>
-        <section class="results-panel"><div class="result-tabs" role="tablist" aria-label="Crawl results"><button class="tab " id="tab-overview" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="overview"><span data-icon="grid"></span>Insights</button><button class="tab active" id="tab-pages" role="tab" aria-selected="true" tabindex="0" aria-controls="result-content" data-tab="pages"><span data-icon="file"></span>Pages<span id="pages-count" class="count">0</span></button><button class="tab " id="tab-graph" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="graph"><span data-icon="network"></span>Link map</button><button class="tab " id="tab-paths" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="paths"><span data-icon="layers"></span>URL paths</button><button class="tab " id="tab-elements" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="elements"><span data-icon="grid"></span>Elements</button><button class="tab " id="tab-issues" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="issues"><span data-icon="alert"></span>Issues<span id="issues-count" class="count">0</span></button><button class="tab" id="tab-links" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="links"><span data-icon="link"></span>Links</button><button class="tab" id="tab-javascript" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="javascript"><span data-icon="code"></span>JavaScript</button><button class="tab" id="tab-resources" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="resources"><span data-icon="layers"></span>Resources</button><button class="tab" id="tab-structured" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="structured"><span data-icon="code"></span>Structured data</button><button class="tab" id="tab-sitemaps" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="sitemaps"><span data-icon="network"></span>Sitemaps</button><button class="tab" id="tab-robots" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="robots"><span data-icon="shield"></span>Robots</button><button class="tab" id="tab-custom" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="custom"><span data-icon="file"></span>Custom fields</button><button class="tab " id="tab-activity" role="tab" aria-selected="false" tabindex="-1" aria-controls="result-content" data-tab="activity"><span data-icon="terminal"></span>Activity</button></div><div class="results-toolbar" id="results-toolbar"><button class="button" data-action="pages-csv">Export filtered CSV</button><label class="search-box"><span data-icon="search"></span><input type="search" id="search" placeholder="Search pages, titles, or URLs…" aria-label="Search results"><kbd>/</kbd></label><label class="sr-only" for="page-filter">Filter pages</label><select id="page-filter"><option value="all">All pages</option><option value="browser">Browser-rendered</option><option value="http">HTTP-only</option><option value="render-failed">Rendering needs attention</option><option value="sitemap">Sitemap-seeded</option><option value="review">Needs review</option><option value="external">Has external links</option><option value="no-external">No external links</option></select><label class="sr-only" for="sort">Sort pages</label><select id="sort"><option value="url">URL A–Z</option><option value="depth">Depth: low to high</option><option value="duration">Slowest first</option><option value="links">Most links</option></select></div><div id="result-content" role="tabpanel" aria-labelledby="tab-pages"></div><div class="table-footer" id="table-footer"><span id="result-count"></span><div><button class="icon-button" data-action="previous" aria-label="Previous page"><span data-icon="left"></span></button><span id="pagination"></span><button class="icon-button" data-action="next" aria-label="Next page"><span data-icon="right"></span></button></div></div></section>
+     <section class="welcome-panel home-workspace" id="welcome">
+      <div class="home-intro">
+       <span class="eyebrow">
+        WEB CRAWLER STUDIO
+       </span>
+       <h1>
+        Inspect a website.
+       </h1>
+       <p>
+        Start a crawl, follow its connections, and find the details that need your attention.
+       </p>
+      </div>
+      <form class="quick-start" id="quick-start">
+       <label for="quick-url">
+        Website to explore
+       </label>
+       <div class="quick-url-row">
+        <span data-icon="globe">
+        </span>
+        <input aria-describedby="quick-url-hint" autocomplete="url" id="quick-url" inputmode="url" maxlength="2048" placeholder="your-website.com" required="" spellcheck="false" type="text"/>
+        <button class="button primary" type="submit">
+         Configure crawl
+         <span data-icon="arrow">
+         </span>
+        </button>
+       </div>
+       <p id="quick-url-hint">
+        You’ll review the mode and limits before any requests are sent.
+       </p>
+       <p class="form-error" hidden="" id="quick-error" role="alert">
+       </p>
+      </form>
+      <div class="home-secondary">
+       <button class="button" data-action="examples">
+        <span data-icon="play">
+        </span>
+        Explore sample sites
+       </button>
+       <button class="button text-button" data-action="check-connection">
+        Check a connection
+        <span data-icon="arrow">
+        </span>
+       </button>
+       <span class="home-privacy">
+        <span data-icon="shield">
+        </span>
+        Your results stay on this computer
+       </span>
+      </div>
+      <section aria-labelledby="home-recents-title" class="home-recents">
+       <div class="section-heading">
+        <h2 id="home-recents-title">
+         Pick up where you left off
+        </h2>
+        <button class="button text-button" data-view="history">
+         View history
+         <span data-icon="arrow">
+         </span>
+        </button>
+       </div>
+       <div id="home-recent-list">
+       </div>
       </section>
-      <div class="hybrid-entry"><div><b>Inspect what JavaScript changes.</b><span>Try a finite local application with API data, lazy content, shadow roots and nested sitemaps.</span></div><button class="button primary" data-action="hybrid-demo">Try hybrid lab</button></div><section id="getting-started" class="getting-started"><article><span class="step-icon" data-icon="globe"></span><h3>Choose your starting point</h3><p>Paste a public URL. Keep the defaults for a gentle first crawl.</p></article><article><span class="step-icon" data-icon="network"></span><h3>Follow the connections</h3><p>See pages and links arrive. Pause or stop at any time.</p></article><article><span class="step-icon" data-icon="download"></span><h3>Take the results with you</h3><p>Export a shareable HTML report, CSV, JSON, or a link graph.</p></article></section>
+     </section>
+     <section hidden="" id="crawl-section">
+      <div class="crawl-heading">
+       <div class="site-avatar" id="site-avatar">
+        W
+       </div>
+       <div class="crawl-identity">
+        <div class="crawl-title">
+         <h2 id="crawl-name">
+          Untitled crawl
+         </h2>
+         <span aria-live="polite" class="badge" id="crawl-status" role="status">
+         </span>
+        </div>
+        <p id="crawl-url">
+        </p>
+       </div>
+       <div class="crawl-actions">
+        <button class="button" data-action="pause" id="pause-button">
+         <span data-icon="pause">
+         </span>
+         Pause
+        </button>
+        <button class="button danger-ghost" data-action="stop" id="stop-button">
+         <span data-icon="stop">
+         </span>
+         Stop
+        </button>
+        <button class="button" data-action="rerun" id="rerun-button">
+         <span data-icon="refresh">
+         </span>
+         Run again
+        </button>
+        <button class="button primary" data-action="export" id="export-button">
+         <span data-icon="download">
+         </span>
+         Export results
+        </button>
+        <button aria-label="Open sample crawls" class="icon-button" data-action="examples" title="Sample crawls">
+         <span data-icon="play">
+         </span>
+        </button>
+       </div>
+      </div>
+      <div class="progress-card">
+       <div class="progress-line">
+        <span id="progress-message">
+         Preparing the crawl…
+        </span>
+        <span id="progress-numbers">
+        </span>
+       </div>
+       <progress aria-label="URL budget used" id="crawl-progress" max="100" value="0">
+       </progress>
+       <div class="progress-foot">
+        <span id="progress-detail">
+        </span>
+        <span id="elapsed">
+        </span>
+       </div>
+      </div>
+      <section aria-labelledby="connection-action-title" class="connection-action-card" hidden="" id="connection-action-card">
+       <span aria-hidden="true" class="connection-emblem">
+        ↗
+       </span>
+       <div>
+        <span class="eyebrow">
+         CONNECTION DIAGNOSTICS
+        </span>
+        <h3 id="connection-action-title">
+        </h3>
+        <p id="connection-action-message">
+        </p>
+        <p id="connection-action-guidance">
+        </p>
+        <div class="connection-actions">
+         <button class="button primary" data-action="check-connection">
+          Check connection
+         </button>
+         <button class="button" data-action="owner-access">
+          Owner access
+         </button>
+        </div>
+       </div>
+      </section>
+      <details class="run-diagnostics" id="run-diagnostics">
+       <summary>
+        <span data-icon="terminal">
+        </span>
+        <span>
+         Run details
+        </span>
+        <span class="muted" id="run-detail-summary">
+        </span>
+       </summary>
+       <div id="crawl-telemetry">
+       </div>
+      </details>
+      <div class="notice" hidden="" id="job-notice">
+      </div>
+      <div class="metrics">
+       <button aria-label="View crawled pages" class="metric" data-metric="pages" type="button">
+        <div>
+         <span>
+          Pages crawled
+         </span>
+         <span data-icon="file">
+         </span>
+        </div>
+        <strong id="metric-pages">
+         0
+        </strong>
+       </button>
+       <button aria-label="Explore internal links" class="metric" data-metric="links" type="button">
+        <div>
+         <span>
+          Internal links
+         </span>
+         <span data-icon="link">
+         </span>
+        </div>
+        <strong id="metric-internal">
+         0
+        </strong>
+       </button>
+       <button aria-label="Explore external links" class="metric" data-metric="links-external" type="button">
+        <div>
+         <span>
+          External links
+         </span>
+         <span data-icon="external">
+         </span>
+        </div>
+        <strong id="metric-external">
+         0
+        </strong>
+       </button>
+       <button aria-label="Review issues" class="metric" data-metric="issues" type="button">
+        <div>
+         <span>
+          Things to review
+         </span>
+         <span data-icon="alert">
+         </span>
+        </div>
+        <strong id="metric-issues">
+         0
+        </strong>
+       </button>
+       <button aria-label="Browse images" class="metric" data-metric="images" type="button">
+        <div>
+         <span>
+          Images
+         </span>
+         <span data-icon="grid">
+         </span>
+        </div>
+        <strong id="metric-images">
+         0
+        </strong>
+       </button>
+       <button aria-label="Explore resources" class="metric" data-metric="resources" type="button">
+        <div>
+         <span>
+          Resources
+         </span>
+         <span data-icon="code">
+         </span>
+        </div>
+        <strong id="metric-resources">
+         0
+        </strong>
+       </button>
+      </div>
+      <section class="results-panel">
+       <div class="workspace-heading">
+        <div>
+         <h2 id="workspace-title">
+          Pages
+         </h2>
+         <p id="workspace-description">
+          Find a page, select a set, or open its captured details.
+         </p>
+        </div>
+        <button class="button" data-action="examples">
+         <span data-icon="play">
+         </span>
+         Examples
+        </button>
+       </div>
+       <div aria-label="Crawl results" class="result-tabs" role="tablist">
+        <span aria-hidden="true" class="nav-group-label">
+         EXPLORE
+        </span>
+        <button aria-controls="result-content" aria-label="Insights" aria-selected="false" class="tab" data-tab="overview" id="tab-overview" role="tab" tabindex="-1" title="Overview">
+         <span data-icon="grid">
+         </span>
+         <span class="nav-text">
+          Insights
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Pages" aria-selected="true" class="tab active" data-tab="pages" id="tab-pages" role="tab" tabindex="0" title="Pages 0">
+         <span data-icon="file">
+         </span>
+         <span class="nav-text">
+          Pages
+         </span>
+         <span class="count" id="pages-count">
+          0
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Link map" aria-selected="false" class="tab" data-tab="graph" id="tab-graph" role="tab" tabindex="-1" title="Visual Atlas">
+         <span data-icon="network">
+         </span>
+         <span class="nav-text">
+          Link map
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="URL paths" aria-selected="false" class="tab" data-tab="paths" id="tab-paths" role="tab" tabindex="-1" title="URL paths">
+         <span data-icon="layers">
+         </span>
+         <span class="nav-text">
+          URL paths
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Elements" aria-selected="false" class="tab" data-tab="elements" id="tab-elements" role="tab" tabindex="-1" title="Images &amp; elements">
+         <span data-icon="grid">
+         </span>
+         <span class="nav-text">
+          Elements
+         </span>
+        </button>
+        <span aria-hidden="true" class="nav-group-label">
+         ANALYZE
+        </span>
+        <button aria-controls="result-content" aria-label="Issues" aria-selected="false" class="tab" data-tab="issues" id="tab-issues" role="tab" tabindex="-1" title="Issues 0">
+         <span data-icon="alert">
+         </span>
+         <span class="nav-text">
+          Issues
+         </span>
+         <span class="count" id="issues-count">
+          0
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Links" aria-selected="false" class="tab" data-tab="links" id="tab-links" role="tab" tabindex="-1" title="Links">
+         <span data-icon="link">
+         </span>
+         <span class="nav-text">
+          Links
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="JavaScript" aria-selected="false" class="tab" data-tab="javascript" id="tab-javascript" role="tab" tabindex="-1" title="JavaScript">
+         <span data-icon="code">
+         </span>
+         <span class="nav-text">
+          JavaScript
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Resources" aria-selected="false" class="tab" data-tab="resources" id="tab-resources" role="tab" tabindex="-1" title="Resources">
+         <span data-icon="layers">
+         </span>
+         <span class="nav-text">
+          Resources
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Structured data" aria-selected="false" class="tab" data-tab="structured" id="tab-structured" role="tab" tabindex="-1" title="Structured data">
+         <span data-icon="code">
+         </span>
+         <span class="nav-text">
+          Structured data
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Custom fields" aria-selected="false" class="tab" data-tab="custom" id="tab-custom" role="tab" tabindex="-1" title="Custom fields">
+         <span data-icon="file">
+         </span>
+         <span class="nav-text">
+          Custom fields
+         </span>
+        </button>
+        <span aria-hidden="true" class="nav-group-label">
+         CRAWL TOOLS
+        </span>
+        <button aria-controls="result-content" aria-label="Sitemaps" aria-selected="false" class="tab" data-tab="sitemaps" id="tab-sitemaps" role="tab" tabindex="-1" title="Sitemaps">
+         <span data-icon="network">
+         </span>
+         <span class="nav-text">
+          Sitemaps
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Robots" aria-selected="false" class="tab" data-tab="robots" id="tab-robots" role="tab" tabindex="-1" title="Robots">
+         <span data-icon="shield">
+         </span>
+         <span class="nav-text">
+          Robots
+         </span>
+        </button>
+        <button aria-controls="result-content" aria-label="Activity" aria-selected="false" class="tab" data-tab="activity" id="tab-activity" role="tab" tabindex="-1" title="Activity">
+         <span data-icon="terminal">
+         </span>
+         <span class="nav-text">
+          Activity
+         </span>
+        </button>
+       </div>
+       <div class="results-toolbar" id="results-toolbar">
+        <label class="search-box">
+         <span data-icon="search">
+         </span>
+         <input aria-label="Search results" id="search" placeholder="Search pages, titles, or URLs…" type="search"/>
+         <kbd>
+          /
+         </kbd>
+        </label>
+        <label class="toolbar-field">
+         <span class="sr-only">
+          Filter pages
+         </span>
+         <select id="page-filter">
+          <option value="all">
+           All pages
+          </option>
+          <option value="browser">
+           Browser-rendered
+          </option>
+          <option value="http">
+           HTTP-only
+          </option>
+          <option value="render-failed">
+           Rendering needs attention
+          </option>
+          <option value="sitemap">
+           Sitemap-seeded
+          </option>
+          <option value="review">
+           Needs review
+          </option>
+          <option value="external">
+           Has external links
+          </option>
+          <option value="no-external">
+           No external links
+          </option>
+         </select>
+        </label>
+        <label class="toolbar-field">
+         <span class="sr-only">
+          Sort pages
+         </span>
+         <select id="sort">
+          <option value="url">
+           URL A–Z
+          </option>
+          <option value="url-desc">
+           URL Z–A
+          </option>
+          <option value="title">
+           Title A–Z
+          </option>
+          <option value="status">
+           Status
+          </option>
+          <option value="method">
+           Method
+          </option>
+          <option value="words-desc">
+           Most words
+          </option>
+          <option value="words">
+           Fewest words
+          </option>
+          <option value="depth">
+           Depth: low to high
+          </option>
+          <option value="duration">
+           Slowest first
+          </option>
+          <option value="duration-asc">
+           Fastest first
+          </option>
+          <option value="links">
+           Most internal links
+          </option>
+          <option value="external-desc">
+           Most external links
+          </option>
+         </select>
+        </label>
+        <details class="column-picker" id="page-columns">
+         <summary>
+          <span data-icon="columns">
+          </span>
+          Columns
+         </summary>
+         <div class="column-choices" id="column-choices">
+         </div>
+        </details>
+        <button class="button" data-action="pages-csv" id="pages-export">
+         Export filtered CSV
+        </button>
+       </div>
+       <div class="page-viewbar" id="page-viewbar">
+        <div aria-label="Page quick filters" class="quick-filters" role="group">
+         <button aria-pressed="true" data-page-filter="all">
+          All pages
+         </button>
+         <button aria-pressed="false" data-page-filter="review">
+          Needs review
+         </button>
+         <button aria-pressed="false" data-page-filter="browser">
+          Browser rendered
+         </button>
+         <button aria-pressed="false" data-page-filter="external">
+          External links
+         </button>
+        </div>
+        <button class="button text-button" data-action="clear-filters" hidden="" id="clear-filters">
+         Reset filters
+        </button>
+       </div>
+       <div class="page-selection" hidden="" id="page-selection">
+        <strong id="selection-count" role="status">
+        </strong>
+        <span id="selection-hidden">
+        </span>
+        <button class="button" data-action="select-matches">
+         Select all matching
+        </button>
+        <button class="button" data-action="copy-pages">
+         Copy selected URLs
+        </button>
+        <button class="button" data-action="clear-selection">
+         Clear selection
+        </button>
+       </div>
+       <div aria-labelledby="tab-pages" id="result-content" role="tabpanel">
+       </div>
+       <div class="table-footer" id="table-footer">
+        <span id="result-count">
+        </span>
+        <label class="page-size-label">
+         Rows per page
+         <select id="page-size">
+          <option value="20">
+           20
+          </option>
+          <option value="50">
+           50
+          </option>
+          <option value="100">
+           100
+          </option>
+         </select>
+        </label>
+        <div>
+         <button aria-label="Previous page" class="icon-button" data-action="previous">
+          <span data-icon="left">
+          </span>
+         </button>
+         <span id="pagination">
+         </span>
+         <button aria-label="Next page" class="icon-button" data-action="next">
+          <span data-icon="right">
+          </span>
+         </button>
+        </div>
+       </div>
+      </section>
+     </section>
+     <section class="getting-started" id="getting-started">
+      <article>
+       <span class="step-icon" data-icon="globe">
+       </span>
+       <h3>
+        Choose your starting point
+       </h3>
+       <p>
+        Paste a public URL. Keep the defaults for a gentle first crawl.
+       </p>
+      </article>
+      <article>
+       <span class="step-icon" data-icon="network">
+       </span>
+       <h3>
+        Follow the connections
+       </h3>
+       <p>
+        See pages and links arrive. Pause or stop at any time.
+       </p>
+      </article>
+      <article>
+       <span class="step-icon" data-icon="download">
+       </span>
+       <h3>
+        Take the results with you
+       </h3>
+       <p>
+        Export a shareable HTML report, CSV, JSON, or a link graph.
+       </p>
+      </article>
+     </section>
     </section>
-    <section id="history-view" hidden><div class="page-heading"><div><div class="eyebrow">YOUR LOCAL LIBRARY</div><h1>Crawl history</h1><p>Pick up where you left off. Results are saved on this computer.</p></div><button class="button primary" data-action="new"><span data-icon="plus"></span>New crawl</button></div><div id="history-list"></div></section>
-    <footer class="main-footer"><span><span data-icon="shield"></span>Built for thoughtful crawling.</span><span>HTTP + bounded Chromium · No form submission · Respect robots.txt</span></footer>
-  </main>
-</div>
-<dialog id="crawl-dialog" class="modal"><form id="crawl-form"><div class="modal-header"><div><div class="eyebrow">LET’S MAP SOMETHING</div><h2>New crawl</h2></div><button type="button" class="icon-button" data-close="crawl-dialog" aria-label="Close new crawl"><span data-icon="close"></span></button></div><div class="modal-body"><label class="field">Website URL<input id="url-input" name="url" type="text" inputmode="url" placeholder="https://your-website.com" required maxlength="2048" autocomplete="url" spellcheck="false"><small>A public website you own or have permission to crawl.</small></label><div class="setup-connection"><span>Protected or unreachable site?</span><button type="button" class="button" data-action="check-form">Check connection first</button><button type="button" class="button" data-action="owner-access">Owner access</button></div><label class="field">Crawl name <span class="optional">optional</span><input name="name" placeholder="e.g. Documentation audit" maxlength="100"></label><fieldset class="mode-choices"><legend>Rendering mode</legend><label><input type="radio" name="mode" value="smart" checked><span><strong>Smart Hybrid</strong><small>HTTP first, browser when needed</small><b>RECOMMENDED</b></span></label><label><input type="radio" name="mode" value="http"><span><strong>Fast HTTP</strong><small>No JavaScript execution</small></span></label><label><input type="radio" name="mode" value="browser"><span><strong>Full Browser</strong><small>Render every HTML page</small></span></label></fieldset><div class="browser-status"><span id="browser-availability">Checking Chromium availability…</span><button type="button" class="button" data-action="browser-help">Browser setup</button></div><fieldset class="presets"><legend>Crawl size</legend><label><input type="radio" name="preset" value="50" checked><span><strong>Quick look</strong><small>Up to 50 URLs</small></span></label><label><input type="radio" name="preset" value="200"><span><strong>Site review</strong><small>Up to 200 URLs</small></span></label><label><input type="radio" name="preset" value="500"><span><strong>Deeper dive</strong><small>Up to 500 URLs</small></span></label></fieldset><details class="advanced"><summary>Advanced settings<span class="optional">Limits, scope &amp; pacing</span></summary><div class="field-grid"><label class="field">URL limit<input name="maxPages" type="number" value="50" min="1" max="2000" required></label><label class="field">Maximum depth<input name="maxDepth" type="number" value="10" min="0" max="100" required></label><label class="field">Page workers<input name="maxConcurrency" type="number" value="3" min="1" max="8" required></label><label class="field">Delay between requests (ms)<input name="delayMs" type="number" value="300" min="100" max="60000" required></label><label class="field">Request timeout (seconds)<input name="timeout" type="number" value="15" min="1" max="120" required></label><label class="field">Run deadline (minutes)<input name="duration" type="number" value="10" min="1" max="60" required></label><label class="field wide">Restrict to a path <span class="optional">optional</span><input name="pathPrefix" placeholder="/docs" maxlength="1000"><small>The start URL must be inside this path.</small></label></div><label class="checkbox-label"><input name="stripTracking" type="checkbox" checked>Remove common tracking parameters</label></details><details class="advanced"><summary>Rendering &amp; discovery<span class="optional">Chromium, scrolling, sitemaps</span></summary><div class="field-grid"><label class="field">Browser contexts<input name="browserConcurrency" type="number" min="1" max="4" value="2" required></label><label class="field">Render timeout (seconds)<input name="renderTimeout" type="number" min="1" max="60" value="15" required></label><label class="field">Scroll iterations<input name="scrollIterations" type="number" min="0" max="8" value="0" required><small>Finite viewport steps; never clicks or submits forms.</small></label><label class="field">Additional sitemap URLs<textarea name="sitemapURLs" maxlength="4096" placeholder="One same-origin URL per line"></textarea></label></div><label class="checkbox-label"><input type="checkbox" name="discoverSitemaps" checked>Discover robots.txt sitemaps and /sitemap.xml</label><label class="checkbox-label"><input type="checkbox" name="captureScreenshots" checked>Save rendered viewport screenshots and source evidence</label><label class="checkbox-label"><input type="checkbox" name="adaptiveConcurrency">Reduce page workers when Node RSS exceeds 512 MiB</label></details><details class="advanced"><summary>Custom extraction<span class="optional">CSS selectors, no code</span></summary><div id="rule-list"></div><button type="button" class="button" id="rule-add">Add extraction rule</button><p class="muted">Extract text, an attribute, or inert HTML. HTML output is always displayed as text. Maximum 12 rules.</p></details><details class="advanced"><summary>Saved settings profiles<span class="optional">Local to this browser</span></summary><label class="field">Profile<select id="profile-select"></select></label><label class="field">Profile name<input id="profile-name" maxlength="80" placeholder="e.g. Documentation, E-commerce inventory"></label><div class="profile-actions"><button type="button" class="button" id="profile-save">Save / rename</button><button type="button" class="button" id="profile-copy">Duplicate</button><button type="button" class="button" id="profile-delete">Delete</button><button type="button" class="button" id="profile-export">Export profiles</button><label class="button profile-import">Import profiles<input id="profile-import" type="file" accept="application/json,.json"></label></div></details><div class="safe-note"><span data-icon="shield"></span><p>Follows safe entry-host redirects, then stays in scope. Respects robots.txt. Never submits forms or bypasses access controls. Browser mode loads public resources through the checked transport; page navigation stays in scope.</p></div><div class="form-error" id="form-error" role="alert" hidden></div></div><div class="modal-footer"><button type="button" class="button" data-close="crawl-dialog">Cancel</button><button type="submit" class="button primary" id="start-button"><span data-icon="play"></span>Start crawling</button></div></form></dialog>
-<dialog id="detail-dialog" class="drawer"><div class="modal-header"><div><div class="eyebrow">PAGE INSPECTOR</div><h2>Page details</h2></div><button class="icon-button" data-close="detail-dialog" aria-label="Close page details"><span data-icon="close"></span></button></div><div id="detail-content" class="modal-body"></div></dialog>
-<dialog id="export-dialog" class="modal small-modal"><div class="modal-header"><div><div class="eyebrow">TAKE IT WITH YOU</div><h2>Export results</h2></div><button class="icon-button" data-close="export-dialog" aria-label="Close export"><span data-icon="close"></span></button></div><div class="modal-body"><p class="muted">Exports contain the current results, including partial crawls. Review site content before sharing.</p><div class="export-options"><button data-export="html"><span data-icon="globe"></span><span><strong>HTML report</strong><small>A self-contained report for any browser</small></span><span data-icon="download"></span></button><button data-export="csv"><span data-icon="grid"></span><span><strong>CSV spreadsheet</strong><small>A flat page inventory for analysis</small></span><span data-icon="download"></span></button><button data-export="json"><span data-icon="code"></span><span><strong>JSON pages</strong><small>Structured page records, including Boot.dev fields</small></span><span data-icon="download"></span></button><button data-export="full"><span data-icon="layers"></span><span><strong>Complete crawl JSON</strong><small>Pages, errors, settings, and diagnostics</small></span><span data-icon="download"></span></button><button data-export="svg"><span data-icon="network"></span><span><strong>SVG link map</strong><small>An image of crawled-page connections</small></span><span data-icon="download"></span></button></div></div></dialog>
-<dialog id="help-dialog" class="modal"><div class="modal-header"><div><div class="eyebrow">A LITTLE GUIDANCE</div><h2>Make the most of your crawl</h2></div><button class="icon-button" data-close="help-dialog" aria-label="Close help"><span data-icon="close"></span></button></div><div class="modal-body help-body"><h3>1. Start small</h3><p>Use Quick look for a first run, or Try a local demo to crawl a tiny real site running on your computer. The demo deliberately includes a broken link and missing metadata.</p><h3>2. Read the boundaries</h3><p>The URL budget includes failed candidates. The progress bar shows budget used, not percent of the whole website discovered. Depth is discovery depth. External page links are counted, not crawled. Chromium may load public cross-origin resources through the guarded transport.</p><h3>3. Review, then export</h3><p>Click any page to inspect its metadata, links, and images. Issues include fetch failures and simple content checks—not a complete SEO or accessibility audit.</p><h3>Pause, stop &amp; save</h3><p>Pause prevents new requests; in-flight requests finish. The run deadline continues while paused. Stop saves partial results. Closing the browser does not stop the server; press Ctrl+C in its terminal to quit.</p><h3>Local &amp; private</h3><p>No account, analytics telemetry or cloud storage. Website JavaScript runs only in isolated Chromium, never in the Studio interface. Public sites still receive your requests and IP address. Private network targets are blocked in the GUI. Up to 30 runs are saved; delete old runs from History.</p><h3>Visual Atlas</h3><p>Use Link map for a spiderweb, radial map or discovery layers. Select a node to focus its neighborhood or trace a captured route from the start. URL paths shows directory structure, not inferred hyperlinks. Elements provides image galleries, links, headings, scripts/styles/media, and form structure.</p><p>Image previews are off until you request them. They make additional raster-image requests through the local server without cookies or referrer. Fast HTTP never executes scripts. Browser modes execute scripts and inspect same-origin frames; forms are never submitted.</p><h3>Keyboard shortcuts</h3><div class="shortcuts"><span><kbd>Ctrl K</kbd> Jump to a view</span><span><kbd>N</kbd> New crawl</span><span><kbd>/</kbd> Search results</span><span><kbd>Esc</kbd> Close dialog</span></div><h3>Saved data</h3><code id="data-directory"></code><p class="muted">The README includes Windows, WSL, macOS, Linux, troubleshooting, and developer instructions.</p></div></dialog>
-<dialog id="connection-dialog" class="modal connection-modal" aria-labelledby="connection-title"><div class="modal-header"><div><div class="eyebrow">BEFORE YOU CRAWL</div><h2 id="connection-title">Check your connection</h2></div><button class="icon-button" data-close="connection-dialog" aria-label="Close connection check">×</button></div><div class="modal-body"><p class="connection-intro">A small, read-only check of robots.txt and your starting page. No browser launches, saved crawl, or hidden retries.</p><form id="connection-form"><label class="field">Website address<input id="connection-url" required type="text" inputmode="url" maxlength="2048" placeholder="https://unnippillil.com" autocomplete="url" spellcheck="false"></label><button class="button primary" id="connection-submit">Check connection</button></form><div id="connection-result" class="connection-result" role="status" aria-live="polite"></div><div class="connection-actions"><button class="button" id="connection-owner">Configure owner access</button><button class="button" id="connection-copy" hidden>Copy diagnostic report</button></div></div></dialog>
-<dialog id="owner-dialog" class="modal connection-modal" aria-labelledby="owner-title"><div class="modal-header"><div><div class="eyebrow">YOUR SITE. YOUR PERMISSION.</div><h2 id="owner-title">Owner access</h2></div><button class="icon-button" data-close="owner-dialog" aria-label="Close owner access">×</button></div><div class="modal-body"><p>For a Vercel deployment you control, use its <strong>Protection Bypass for Automation</strong> secret. This is owner-issued authentication—not a CAPTCHA solver or an access-control exploit.</p><p id="owner-state" class="owner-state" role="status"></p><form id="owner-form" autocomplete="off"><label class="field">Exact HTTPS origin<input id="owner-origin" required type="url" placeholder="https://unnippillil.com" maxlength="2048" spellcheck="false"><small>Sent only to this origin. A www redirect or CDN does not inherit the secret.</small></label><label class="field">Vercel automation secret<input id="owner-token" required type="password" minlength="16" maxlength="1024" autocomplete="new-password" spellcheck="false"><small>Not a Vercel API token. Generate it in your project’s Deployment Protection settings.</small></label><label class="checkbox-label"><input id="owner-confirm" type="checkbox" required>I control this deployment and authorize this test.</label><div class="connection-actions"><button class="button primary" id="owner-save">Use for this session</button><button type="button" class="button" id="owner-clear">Forget secret</button></div></form><p class="privacy-note">Memory only · expires after one hour · never included in profiles or crawl settings. Restarting Studio clears it. Custom firewall denies may still require a site-owner rule change.</p><a class="reference-link" href="https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation" target="_blank" rel="noopener noreferrer">Read Vercel’s owner-automation setup ↗</a><p id="owner-error" class="form-error" role="alert" hidden></p></div></dialog>
-<dialog id="browser-dialog" class="modal small-modal"><div class="modal-header"><h2>Chromium setup</h2><button class="icon-button" data-close="browser-dialog" aria-label="Close browser setup">×</button></div><div class="modal-body"><p>Fast HTTP needs no browser. Smart Hybrid uses HTTP results with a visible warning when Chromium is unavailable. Full Browser requires Chromium.</p><h3>Source / WSL installation</h3><pre>npm run browser:install</pre><h3>Portable installation</h3><p>Open <b>Install Browser.cmd</b> on Windows or run <b>bash install-browser.sh</b> in the extracted portable folder. This downloads Chromium once and uses the bundled Node runtime.</p><p>Run as a normal OS user. Chromium sandbox support is required; do not disable security protections to crawl untrusted sites.</p><button class="button" data-action="refresh-browser">Recheck installation</button><p id="browser-check-result" role="status"></p></div></dialog><dialog id="confirm-dialog" class="modal small-modal"><div class="modal-header"><h2 id="confirm-title">Confirm action</h2></div><div class="modal-body"><p id="confirm-message"></p></div><div class="modal-footer"><button class="button" data-close="confirm-dialog">Cancel</button><button class="button danger" id="confirm-accept">Confirm</button></div></dialog>
-<dialog id="command-dialog" class="modal small-modal"><div class="modal-header"><div><span class="atlas-kicker">QUICK NAVIGATION</span><h2>Jump to a view</h2></div><button class="icon-button" data-close="command-dialog" aria-label="Close quick navigation">×</button></div><div class="modal-body"><label class="field">Search commands and crawl data<input id="command-search" type="search" placeholder="show 404s, javascript pages, /products…"></label><div id="command-results" class="atlas-command-list"><button data-jump="overview">Insights<span>↗</span></button><button data-jump="pages">Pages<span>↗</span></button><button data-jump="graph">Link map · Spiderweb explorer<span>↗</span></button><button data-jump="paths">URL paths<span>↗</span></button><button data-jump="elements">Elements · Image galleries, links, headings, resources<span>↗</span></button><button data-jump="issues">Issues<span>↗</span></button><button data-jump="activity">Activity<span>↗</span></button><button data-jump="links">Links<span>↗</span></button><button data-jump="javascript">JavaScript<span>↗</span></button><button data-jump="resources">Resources<span>↗</span></button><button data-jump="structured">Structured data<span>↗</span></button><button data-jump="sitemaps">Sitemaps<span>↗</span></button><button data-jump="robots">Robots<span>↗</span></button><button data-jump="custom">Custom fields<span>↗</span></button></div><p class="atlas-fine">Ctrl/⌘ K opens this menu. Use Tab and Enter to navigate.</p></div></dialog>
-<nav class="mobile-nav" aria-label="Mobile navigation"><button data-view="workspace" class="selected"><span data-icon="grid"></span>Overview</button><button data-view="history"><span data-icon="clock"></span>History</button><button data-action="theme"><span data-icon="sun"></span>Theme</button><button data-action="help"><span data-icon="help"></span>Help</button></nav>
-<div id="toast" class="toast" role="status" hidden></div>
-</body></html>
+    <section hidden="" id="history-view">
+     <div class="page-heading">
+      <div>
+       <div class="eyebrow">
+        YOUR LOCAL LIBRARY
+       </div>
+       <h1>
+        Crawl history
+       </h1>
+       <p>
+        Pick up where you left off. Results are saved on this computer.
+       </p>
+      </div>
+      <button class="button primary" data-action="new">
+       <span data-icon="plus">
+       </span>
+       New crawl
+      </button>
+     </div>
+     <div class="history-toolbar">
+      <label class="search-box">
+       <span data-icon="search">
+       </span>
+       <input aria-label="Search crawl history" id="history-search" placeholder="Search by website or crawl name…" type="search"/>
+      </label>
+      <label class="toolbar-field">
+       <span class="sr-only">
+        Filter crawl history
+       </span>
+       <select id="history-filter">
+        <option value="all">
+         All crawls
+        </option>
+        <option value="completed">
+         Completed
+        </option>
+        <option value="attention">
+         Needs attention
+        </option>
+        <option value="active">
+         Active
+        </option>
+       </select>
+      </label>
+      <label class="toolbar-field">
+       <span class="sr-only">
+        Sort crawl history
+       </span>
+       <select id="history-sort">
+        <option value="recent">
+         Newest first
+        </option>
+        <option value="name">
+         Name A–Z
+        </option>
+        <option value="pages">
+         Most pages
+        </option>
+       </select>
+      </label>
+      <span id="history-result-count" role="status">
+      </span>
+     </div>
+     <div id="history-list">
+     </div>
+    </section>
+    <footer class="main-footer">
+     <span>
+      <span data-icon="shield">
+      </span>
+      Built for thoughtful crawling.
+     </span>
+     <span>
+      HTTP + bounded Chromium · No form submission · Respect robots.txt
+     </span>
+    </footer>
+   </main>
+  </div>
+  <dialog aria-labelledby="crawl-dialog-title" class="modal" id="crawl-dialog">
+   <form id="crawl-form">
+    <div class="modal-header">
+     <div>
+      <div class="eyebrow">
+       NEW CRAWL
+      </div>
+      <h2 id="crawl-dialog-title">
+       Where should we start?
+      </h2>
+     </div>
+     <button aria-label="Close new crawl" class="icon-button" data-close="crawl-dialog" type="button">
+      <span data-icon="close">
+      </span>
+     </button>
+    </div>
+    <div class="modal-body">
+     <p class="setup-intro">
+      Choose a website and a crawl size. The defaults work for a first look.
+     </p>
+     <label class="field">
+      Website URL
+      <input autocomplete="url" id="url-input" inputmode="url" maxlength="2048" name="url" placeholder="https://your-website.com" required="" spellcheck="false" type="text"/>
+      <small>
+       A public website you own or have permission to crawl.
+      </small>
+     </label>
+     <div class="setup-connection">
+      <span>
+       Protected or unreachable site?
+      </span>
+      <button class="button" data-action="check-form" type="button">
+       Check connection first
+      </button>
+      <button class="button" data-action="owner-access" type="button">
+       Owner access
+      </button>
+     </div>
+     <label class="field">
+      Crawl name
+      <span class="optional">
+       optional
+      </span>
+      <input maxlength="100" name="name" placeholder="e.g. Documentation audit"/>
+     </label>
+     <fieldset class="mode-choices">
+      <legend>
+       Rendering mode
+      </legend>
+      <label>
+       <input checked="" name="mode" type="radio" value="smart"/>
+       <span>
+        <strong>
+         Smart Hybrid
+        </strong>
+        <small>
+         HTTP first, browser when needed
+        </small>
+        <b>
+         RECOMMENDED
+        </b>
+       </span>
+      </label>
+      <label>
+       <input name="mode" type="radio" value="http"/>
+       <span>
+        <strong>
+         Fast HTTP
+        </strong>
+        <small>
+         No JavaScript execution
+        </small>
+       </span>
+      </label>
+      <label>
+       <input name="mode" type="radio" value="browser"/>
+       <span>
+        <strong>
+         Full Browser
+        </strong>
+        <small>
+         Render every HTML page
+        </small>
+       </span>
+      </label>
+     </fieldset>
+     <div class="browser-status">
+      <span id="browser-availability">
+       Checking Chromium availability…
+      </span>
+      <button class="button" data-action="browser-help" type="button">
+       Browser setup
+      </button>
+     </div>
+     <fieldset class="presets">
+      <legend>
+       Crawl size
+      </legend>
+      <label>
+       <input checked="" name="preset" type="radio" value="50"/>
+       <span>
+        <strong>
+         Quick look
+        </strong>
+        <small>
+         Up to 50 URLs
+        </small>
+       </span>
+      </label>
+      <label>
+       <input name="preset" type="radio" value="200"/>
+       <span>
+        <strong>
+         Site review
+        </strong>
+        <small>
+         Up to 200 URLs
+        </small>
+       </span>
+      </label>
+      <label>
+       <input name="preset" type="radio" value="500"/>
+       <span>
+        <strong>
+         Deeper dive
+        </strong>
+        <small>
+         Up to 500 URLs
+        </small>
+       </span>
+      </label>
+     </fieldset>
+     <details class="advanced">
+      <summary>
+       Advanced settings
+       <span class="optional">
+        Limits, scope &amp; pacing
+       </span>
+      </summary>
+      <div class="field-grid">
+       <label class="field">
+        URL limit
+        <input max="2000" min="1" name="maxPages" required="" type="number" value="50"/>
+       </label>
+       <label class="field">
+        Maximum depth
+        <input max="100" min="0" name="maxDepth" required="" type="number" value="10"/>
+       </label>
+       <label class="field">
+        Page workers
+        <input max="8" min="1" name="maxConcurrency" required="" type="number" value="3"/>
+       </label>
+       <label class="field">
+        Delay between requests (ms)
+        <input max="60000" min="100" name="delayMs" required="" type="number" value="300"/>
+       </label>
+       <label class="field">
+        Request timeout (seconds)
+        <input max="120" min="1" name="timeout" required="" type="number" value="15"/>
+       </label>
+       <label class="field">
+        Run deadline (minutes)
+        <input max="60" min="1" name="duration" required="" type="number" value="10"/>
+       </label>
+       <label class="field wide">
+        Restrict to a path
+        <span class="optional">
+         optional
+        </span>
+        <input maxlength="1000" name="pathPrefix" placeholder="/docs"/>
+        <small>
+         The start URL must be inside this path.
+        </small>
+       </label>
+      </div>
+      <label class="checkbox-label">
+       <input checked="" name="stripTracking" type="checkbox"/>
+       Remove common tracking parameters
+      </label>
+     </details>
+     <details class="advanced">
+      <summary>
+       Rendering &amp; discovery
+       <span class="optional">
+        Chromium, scrolling, sitemaps
+       </span>
+      </summary>
+      <div class="field-grid">
+       <label class="field">
+        Browser contexts
+        <input max="4" min="1" name="browserConcurrency" required="" type="number" value="2"/>
+       </label>
+       <label class="field">
+        Render timeout (seconds)
+        <input max="60" min="1" name="renderTimeout" required="" type="number" value="15"/>
+       </label>
+       <label class="field">
+        Scroll iterations
+        <input max="8" min="0" name="scrollIterations" required="" type="number" value="0"/>
+        <small>
+         Finite viewport steps; never clicks or submits forms.
+        </small>
+       </label>
+       <label class="field">
+        Additional sitemap URLs
+        <textarea maxlength="4096" name="sitemapURLs" placeholder="One same-origin URL per line"></textarea>
+       </label>
+      </div>
+      <label class="checkbox-label">
+       <input checked="" name="discoverSitemaps" type="checkbox"/>
+       Discover robots.txt sitemaps and /sitemap.xml
+      </label>
+      <label class="checkbox-label">
+       <input checked="" name="captureScreenshots" type="checkbox"/>
+       Save rendered viewport screenshots and source evidence
+      </label>
+      <label class="checkbox-label">
+       <input name="adaptiveConcurrency" type="checkbox"/>
+       Reduce page workers when Node RSS exceeds 512 MiB
+      </label>
+     </details>
+     <details class="advanced">
+      <summary>
+       Custom extraction
+       <span class="optional">
+        CSS selectors, no code
+       </span>
+      </summary>
+      <div id="rule-list">
+      </div>
+      <button class="button" id="rule-add" type="button">
+       Add extraction rule
+      </button>
+      <p class="muted">
+       Extract text, an attribute, or inert HTML. HTML output is always displayed as text. Maximum 12 rules.
+      </p>
+     </details>
+     <details class="advanced">
+      <summary>
+       Saved settings profiles
+       <span class="optional">
+        Local to this browser
+       </span>
+      </summary>
+      <label class="field">
+       Profile
+       <select id="profile-select">
+       </select>
+      </label>
+      <label class="field">
+       Profile name
+       <input id="profile-name" maxlength="80" placeholder="e.g. Documentation, E-commerce inventory"/>
+      </label>
+      <div class="profile-actions">
+       <button class="button" id="profile-save" type="button">
+        Save / rename
+       </button>
+       <button class="button" id="profile-copy" type="button">
+        Duplicate
+       </button>
+       <button class="button" id="profile-delete" type="button">
+        Delete
+       </button>
+       <button class="button" id="profile-export" type="button">
+        Export profiles
+       </button>
+       <label class="button profile-import">
+        Import profiles
+        <input accept="application/json,.json" id="profile-import" type="file"/>
+       </label>
+      </div>
+     </details>
+     <aside aria-label="Crawl plan" class="setup-plan">
+      <span data-icon="check">
+      </span>
+      <div>
+       <strong>
+        Your crawl plan
+       </strong>
+       <p id="crawl-plan">
+       </p>
+      </div>
+     </aside>
+     <div class="safe-note">
+      <span data-icon="shield">
+      </span>
+      <p>
+       Follows safe entry-host redirects, then stays in scope. Respects robots.txt. Never submits forms or bypasses access controls. Browser mode loads public resources through the checked transport; page navigation stays in scope.
+      </p>
+     </div>
+     <div class="form-error" hidden="" id="form-error" role="alert">
+     </div>
+    </div>
+    <div class="modal-footer">
+     <span class="footer-hint">
+      <span data-icon="shield">
+      </span>
+      Bounded. Local. Read-only.
+     </span>
+     <button class="button" data-close="crawl-dialog" type="button">
+      Cancel
+     </button>
+     <button class="button primary" id="start-button" type="submit">
+      <span data-icon="play">
+      </span>
+      Start crawling
+     </button>
+    </div>
+   </form>
+  </dialog>
+  <dialog aria-labelledby="detail-dialog-title" class="drawer" id="detail-dialog">
+   <div class="modal-header">
+    <div>
+     <div class="eyebrow">
+      PAGE INSPECTOR
+     </div>
+     <h2 id="detail-dialog-title">
+      Page details
+     </h2>
+    </div>
+    <button aria-label="Close page details" class="icon-button" data-close="detail-dialog">
+     <span data-icon="close">
+     </span>
+    </button>
+   </div>
+   <div class="modal-body" id="detail-content">
+   </div>
+  </dialog>
+  <dialog aria-labelledby="export-dialog-title" class="modal small-modal" id="export-dialog">
+   <div class="modal-header">
+    <div>
+     <div class="eyebrow">
+      TAKE IT WITH YOU
+     </div>
+     <h2 id="export-dialog-title">
+      Export results
+     </h2>
+    </div>
+    <button aria-label="Close export" class="icon-button" data-close="export-dialog">
+     <span data-icon="close">
+     </span>
+    </button>
+   </div>
+   <div class="modal-body">
+    <p class="muted">
+     Exports contain the current results, including partial crawls. Review site content before sharing.
+    </p>
+    <div class="export-options">
+     <button data-export="html">
+      <span data-icon="globe">
+      </span>
+      <span>
+       <strong>
+        HTML report
+       </strong>
+       <small>
+        A self-contained report for any browser
+       </small>
+      </span>
+      <span data-icon="download">
+      </span>
+     </button>
+     <button data-export="csv">
+      <span data-icon="grid">
+      </span>
+      <span>
+       <strong>
+        CSV spreadsheet
+       </strong>
+       <small>
+        A flat page inventory for analysis
+       </small>
+      </span>
+      <span data-icon="download">
+      </span>
+     </button>
+     <button data-export="json">
+      <span data-icon="code">
+      </span>
+      <span>
+       <strong>
+        JSON pages
+       </strong>
+       <small>
+        Structured page records, including Boot.dev fields
+       </small>
+      </span>
+      <span data-icon="download">
+      </span>
+     </button>
+     <button data-export="full">
+      <span data-icon="layers">
+      </span>
+      <span>
+       <strong>
+        Complete crawl JSON
+       </strong>
+       <small>
+        Pages, errors, settings, and diagnostics
+       </small>
+      </span>
+      <span data-icon="download">
+      </span>
+     </button>
+     <button data-export="svg">
+      <span data-icon="network">
+      </span>
+      <span>
+       <strong>
+        SVG link map
+       </strong>
+       <small>
+        An image of crawled-page connections
+       </small>
+      </span>
+      <span data-icon="download">
+      </span>
+     </button>
+    </div>
+    <p class="export-scope" id="export-scope">
+    </p>
+   </div>
+  </dialog>
+  <dialog aria-labelledby="help-dialog-title" class="modal" id="help-dialog">
+   <div class="modal-header">
+    <div>
+     <div class="eyebrow">
+      A LITTLE GUIDANCE
+     </div>
+     <h2 id="help-dialog-title">
+      Make the most of your crawl
+     </h2>
+    </div>
+    <button aria-label="Close help" class="icon-button" data-close="help-dialog">
+     <span data-icon="close">
+     </span>
+    </button>
+   </div>
+   <div class="modal-body help-body">
+    <h3>
+     1. Start small
+    </h3>
+    <p>
+     Use Quick look for a first run, or Try a local demo to crawl a tiny real site running on your computer. The demo deliberately includes a broken link and missing metadata.
+    </p>
+    <h3>
+     2. Read the boundaries
+    </h3>
+    <p>
+     The URL budget includes failed candidates. The progress bar shows budget used, not percent of the whole website discovered. Depth is discovery depth. External page links are counted, not crawled. Chromium may load public cross-origin resources through the guarded transport.
+    </p>
+    <h3>
+     3. Review, then export
+    </h3>
+    <p>
+     Click any page to inspect its metadata, links, and images. Issues include fetch failures and simple content checks—not a complete SEO or accessibility audit.
+    </p>
+    <h3>
+     Pause, stop &amp; save
+    </h3>
+    <p>
+     Pause prevents new requests; in-flight requests finish. The run deadline continues while paused. Stop saves partial results. Closing the browser does not stop the server; press Ctrl+C in its terminal to quit.
+    </p>
+    <h3>
+     Local &amp; private
+    </h3>
+    <p>
+     No account, analytics telemetry or cloud storage. Website JavaScript runs only in isolated Chromium, never in the Studio interface. Public sites still receive your requests and IP address. Private network targets are blocked in the GUI. Up to 30 runs are saved; delete old runs from History.
+    </p>
+    <h3>
+     Visual Atlas
+    </h3>
+    <p>
+     Use Link map for a spiderweb, radial map or discovery layers. Select a node to focus its neighborhood or trace a captured route from the start. URL paths shows directory structure, not inferred hyperlinks. Elements provides image galleries, links, headings, scripts/styles/media, and form structure.
+    </p>
+    <p>
+     Image previews are off until you request them. They make additional raster-image requests through the local server without cookies or referrer. Fast HTTP never executes scripts. Browser modes execute scripts and inspect same-origin frames; forms are never submitted.
+    </p>
+    <h3>
+     Keyboard shortcuts
+    </h3>
+    <div class="shortcuts">
+     <span>
+      <kbd>
+       Ctrl K
+      </kbd>
+      Jump to a view
+     </span>
+     <span>
+      <kbd>
+       N
+      </kbd>
+      New crawl
+     </span>
+     <span>
+      <kbd>
+       /
+      </kbd>
+      Search results
+     </span>
+     <span>
+      <kbd>
+       Esc
+      </kbd>
+      Close dialog
+     </span>
+    </div>
+    <h3>
+     Saved data
+    </h3>
+    <code id="data-directory">
+    </code>
+    <p class="muted">
+     The README includes Windows, WSL, macOS, Linux, troubleshooting, and developer instructions.
+    </p>
+   </div>
+  </dialog>
+  <dialog aria-labelledby="connection-title" class="modal connection-modal" id="connection-dialog">
+   <div class="modal-header">
+    <div>
+     <div class="eyebrow">
+      BEFORE YOU CRAWL
+     </div>
+     <h2 id="connection-title">
+      Check your connection
+     </h2>
+    </div>
+    <button aria-label="Close connection check" class="icon-button" data-close="connection-dialog">
+     ×
+    </button>
+   </div>
+   <div class="modal-body">
+    <p class="connection-intro">
+     A small, read-only check of robots.txt and your starting page. No browser launches, saved crawl, or hidden retries.
+    </p>
+    <form id="connection-form">
+     <label class="field">
+      Website address
+      <input autocomplete="url" id="connection-url" inputmode="url" maxlength="2048" placeholder="https://unnippillil.com" required="" spellcheck="false" type="text"/>
+     </label>
+     <button class="button primary" id="connection-submit">
+      Check connection
+     </button>
+    </form>
+    <div aria-live="polite" class="connection-result" id="connection-result" role="status">
+    </div>
+    <div class="connection-actions">
+     <button class="button" id="connection-owner">
+      Configure owner access
+     </button>
+     <button class="button" hidden="" id="connection-copy">
+      Copy diagnostic report
+     </button>
+    </div>
+   </div>
+  </dialog>
+  <dialog aria-labelledby="owner-title" class="modal connection-modal" id="owner-dialog">
+   <div class="modal-header">
+    <div>
+     <div class="eyebrow">
+      YOUR SITE. YOUR PERMISSION.
+     </div>
+     <h2 id="owner-title">
+      Owner access
+     </h2>
+    </div>
+    <button aria-label="Close owner access" class="icon-button" data-close="owner-dialog">
+     ×
+    </button>
+   </div>
+   <div class="modal-body">
+    <p>
+     For a Vercel deployment you control, use its
+     <strong>
+      Protection Bypass for Automation
+     </strong>
+     secret. This is owner-issued authentication—not a CAPTCHA solver or an access-control exploit.
+    </p>
+    <p class="owner-state" id="owner-state" role="status">
+    </p>
+    <form autocomplete="off" id="owner-form">
+     <label class="field">
+      Exact HTTPS origin
+      <input id="owner-origin" maxlength="2048" placeholder="https://unnippillil.com" required="" spellcheck="false" type="url"/>
+      <small>
+       Sent only to this origin. A www redirect or CDN does not inherit the secret.
+      </small>
+     </label>
+     <label class="field">
+      Vercel automation secret
+      <input autocomplete="new-password" id="owner-token" maxlength="1024" minlength="16" required="" spellcheck="false" type="password"/>
+      <small>
+       Not a Vercel API token. Generate it in your project’s Deployment Protection settings.
+      </small>
+     </label>
+     <label class="checkbox-label">
+      <input id="owner-confirm" required="" type="checkbox"/>
+      I control this deployment and authorize this test.
+     </label>
+     <div class="connection-actions">
+      <button class="button primary" id="owner-save">
+       Use for this session
+      </button>
+      <button class="button" id="owner-clear" type="button">
+       Forget secret
+      </button>
+     </div>
+    </form>
+    <p class="privacy-note">
+     Memory only · expires after one hour · never included in profiles or crawl settings. Restarting Studio clears it. Custom firewall denies may still require a site-owner rule change.
+    </p>
+    <a class="reference-link" href="https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation" rel="noopener noreferrer" target="_blank">
+     Read Vercel’s owner-automation setup ↗
+    </a>
+    <p class="form-error" hidden="" id="owner-error" role="alert">
+    </p>
+   </div>
+  </dialog>
+  <dialog aria-labelledby="browser-dialog-title" class="modal small-modal" id="browser-dialog">
+   <div class="modal-header">
+    <h2 id="browser-dialog-title">
+     Chromium setup
+    </h2>
+    <button aria-label="Close browser setup" class="icon-button" data-close="browser-dialog">
+     ×
+    </button>
+   </div>
+   <div class="modal-body">
+    <p>
+     Fast HTTP needs no browser. Smart Hybrid uses HTTP results with a visible warning when Chromium is unavailable. Full Browser requires Chromium.
+    </p>
+    <h3>
+     Source / WSL installation
+    </h3>
+    <pre>npm run browser:install</pre>
+    <h3>
+     Portable installation
+    </h3>
+    <p>
+     Open
+     <b>
+      Install Browser.cmd
+     </b>
+     on Windows or run
+     <b>
+      bash install-browser.sh
+     </b>
+     in the extracted portable folder. This downloads Chromium once and uses the bundled Node runtime.
+    </p>
+    <p>
+     Run as a normal OS user. Chromium sandbox support is required; do not disable security protections to crawl untrusted sites.
+    </p>
+    <button class="button" data-action="refresh-browser">
+     Recheck installation
+    </button>
+    <p id="browser-check-result" role="status">
+    </p>
+   </div>
+  </dialog>
+  <dialog aria-labelledby="confirm-title" class="modal small-modal" id="confirm-dialog">
+   <div class="modal-header">
+    <h2 id="confirm-title">
+     Confirm action
+    </h2>
+   </div>
+   <div class="modal-body">
+    <p id="confirm-message">
+    </p>
+   </div>
+   <div class="modal-footer">
+    <button class="button" data-close="confirm-dialog">
+     Cancel
+    </button>
+    <button class="button danger" id="confirm-accept">
+     Confirm
+    </button>
+   </div>
+  </dialog>
+  <dialog aria-labelledby="command-dialog-title" class="modal small-modal" id="command-dialog">
+   <div class="modal-header">
+    <div>
+     <span class="atlas-kicker">
+      QUICK NAVIGATION
+     </span>
+     <h2 id="command-dialog-title">
+      Jump to a view
+     </h2>
+    </div>
+    <button aria-label="Close quick navigation" class="icon-button" data-close="command-dialog">
+     ×
+    </button>
+   </div>
+   <div class="modal-body">
+    <label class="field">
+     Search commands and crawl data
+     <input id="command-search" placeholder="show 404s, javascript pages, /products…" type="search"/>
+    </label>
+    <div class="atlas-command-list" id="command-results">
+     <button data-jump="overview">
+      Insights
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="pages">
+      Pages
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="graph">
+      Link map · Spiderweb explorer
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="paths">
+      URL paths
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="elements">
+      Elements · Image galleries, links, headings, resources
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="issues">
+      Issues
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="activity">
+      Activity
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="links">
+      Links
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="javascript">
+      JavaScript
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="resources">
+      Resources
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="structured">
+      Structured data
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="sitemaps">
+      Sitemaps
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="robots">
+      Robots
+      <span>
+       ↗
+      </span>
+     </button>
+     <button data-jump="custom">
+      Custom fields
+      <span>
+       ↗
+      </span>
+     </button>
+    </div>
+    <p class="atlas-fine">
+     Ctrl/⌘ K opens this menu. Use Tab and Enter to navigate.
+    </p>
+   </div>
+  </dialog>
+  <nav aria-label="Mobile navigation" class="mobile-nav">
+   <button class="selected" data-view="workspace">
+    <span data-icon="grid">
+    </span>
+    Overview
+   </button>
+   <button data-view="history">
+    <span data-icon="clock">
+    </span>
+    History
+   </button>
+   <button data-action="settings">
+    <span data-icon="settings">
+    </span>
+    Settings
+   </button>
+   <button data-action="help">
+    <span data-icon="help">
+    </span>
+    Help
+   </button>
+  </nav>
+  <div class="toast" hidden="" id="toast" role="status">
+  </div>
+  <dialog aria-labelledby="examples-title" class="modal examples-modal" id="examples-dialog">
+   <div class="modal-header">
+    <div>
+     <div class="eyebrow">
+      LEARN BY EXPLORING
+     </div>
+     <h2 id="examples-title">
+      Try a sample crawl
+     </h2>
+    </div>
+    <button aria-label="Close sample crawls" class="icon-button" data-close="examples-dialog">
+     <span data-icon="close">
+     </span>
+    </button>
+   </div>
+   <div class="modal-body">
+    <p class="muted">
+     Real local test websites. No external site is requested.
+    </p>
+    <div class="example-options">
+     <button data-action="demo">
+      <span class="example-icon" data-icon="file">
+      </span>
+      <span>
+       <strong>
+        Try a local demo
+       </strong>
+       <small>
+        A small site with an intentional broken link. Learn the basics.
+       </small>
+       <b>
+        QUICK START
+       </b>
+      </span>
+      <span data-icon="arrow">
+      </span>
+     </button>
+     <button data-action="atlas-demo">
+      <span class="example-icon" data-icon="network">
+      </span>
+      <span>
+       <strong>
+        Explore visual demo
+       </strong>
+       <small>
+        Explore a 37-page website, connected paths, and an image gallery.
+       </small>
+       <b>
+        MAPS &amp; ELEMENTS
+       </b>
+      </span>
+      <span data-icon="arrow">
+      </span>
+     </button>
+     <button data-action="hybrid-demo">
+      <span class="example-icon" data-icon="code">
+      </span>
+      <span>
+       <strong>
+        Try hybrid lab
+       </strong>
+       <small>
+        Compare source and rendered pages. Requires the optional Chromium install.
+       </small>
+       <b>
+        JAVASCRIPT
+       </b>
+      </span>
+      <span data-icon="arrow">
+      </span>
+     </button>
+    </div>
+   </div>
+  </dialog>
+  <dialog aria-labelledby="settings-title" class="modal small-modal" id="settings-dialog">
+   <div class="modal-header">
+    <div>
+     <div class="eyebrow">
+      MAKE IT YOUR WORKSPACE
+     </div>
+     <h2 id="settings-title">
+      Workspace settings
+     </h2>
+    </div>
+    <button aria-label="Close workspace settings" class="icon-button" data-close="settings-dialog">
+     <span data-icon="close">
+     </span>
+    </button>
+   </div>
+   <div class="modal-body">
+    <div class="setting-row">
+     <div>
+      <strong>
+       Appearance
+      </strong>
+      <p>
+       Switch between light and dark surfaces.
+      </p>
+     </div>
+     <button class="button" data-action="theme">
+      <span data-icon="sun">
+      </span>
+      <span id="theme-label">
+       Switch to dark mode
+      </span>
+     </button>
+    </div>
+    <div class="setting-row">
+     <div>
+      <strong>
+       Information density
+      </strong>
+      <p>
+       Comfortable spacing or compact tables.
+      </p>
+     </div>
+     <button class="button" data-action="density" id="density-label">
+      Compact
+     </button>
+    </div>
+    <div class="setting-row">
+     <div>
+      <strong>
+       Transparency
+      </strong>
+      <p>
+       Use opaque surfaces for fewer visual distractions.
+      </p>
+     </div>
+     <button class="button" data-action="glass">
+      <span id="glass-label">
+       Reduce transparency
+      </span>
+     </button>
+    </div>
+    <div class="setting-row">
+     <div>
+      <strong>
+       Keyboard &amp; guidance
+      </strong>
+      <p>
+       Learn navigation and safe crawling defaults.
+      </p>
+     </div>
+     <button class="button" data-action="help">
+      Open help
+     </button>
+    </div>
+    <p class="muted">
+     Appearance preferences are saved in this browser. They never change crawl limits or network policy.
+    </p>
+   </div>
+  </dialog>
+ </body>
+</html>
