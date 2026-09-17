@@ -1,0 +1,75 @@
+# Temporary development-only transport; excluded from the product branch.
+name: Validate interaction workspace
+on:
+  push:
+    branches: [engineering/interaction-studio-20260917]
+    paths: [.github/workflows/interaction-validate.yml]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REQUIRE_BROWSER: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Apply reviewed interface commits to the unchanged product base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse origin/main)" = '97e32177a484df9109adb189c1f7fb2867e9f26b'
+          git checkout -b product-ui 97e32177a484df9109adb189c1f7fb2867e9f26b
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          python3 - <<'PY'
+          import urllib.request, os, base64, json, lzma, hashlib
+          from pathlib import Path
+          shas = ['4cb2d7263a4ac29e42393d12706655a74bd26e31','c23b82bb5cef6a00480b426440eae6df7e8e1d83','69244e3897032f8afbc2c9221d9613645dd63db7','29fbf828a6152d72efc2f7fc6bb0f8d821bf1caf','c5c8ef518a1a743ac358ed219271e719e2a53926','13707f17d7a5d884a15fa3d10a5bf5f0c25ab63e','2c1de4896803bacf96ebd90e9bdfa79ada07ca1e','01ffceda5a2bae3b136ac96af6cfb864934aa119']
+          chunks=[]
+          for sha in shas:
+              request=urllib.request.Request('https://api.github.com/repos/Alex-Unnippillil/web-crawler/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(request,timeout=30) as response: blob=json.load(response)
+              chunks.append(base64.b64decode(blob['content']))
+          patch=lzma.decompress(b''.join(chunks))
+          assert hashlib.sha256(patch).hexdigest()=='f378f6a6be1808638069c70f64541597899cb1210f717c29c7d7c661f6e3fed3'
+          Path(os.environ['RUNNER_TEMP'],'interaction.patch').write_bytes(patch)
+          PY
+          git am "$RUNNER_TEMP/interaction.patch"
+          test -z "$(git diff 97e32177a484df9109adb189c1f7fb2867e9f26b HEAD -- .github/workflows)"
+      - name: Install locked dependencies and sandboxed Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          bash .github/prepare-browser-ci.sh
+          python3 -m pip install playwright==1.63.0
+      - name: Verify application and real interaction workflows
+        run: |
+          set -o pipefail
+          npm run check | tee "$RUNNER_TEMP/interaction-check.log"
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          python3 tests/e2e.py
+          python3 tests/hybrid_e2e.py
+          python3 tests/glass_e2e.py
+          node tests/scale.mjs 1000 > "$RUNNER_TEMP/interaction-scale.json"
+      - name: Commit actual screenshots and push a feature branch only
+        run: |
+          git add docs/interaction-*.png
+          git diff --cached --check
+          git commit -m 'Add interface screenshots'
+          git push origin HEAD:refs/heads/ui/interaction-workbench-20260917
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: interaction-validation
+          path: |
+            docs/interaction-*.png
+            ${{ runner.temp }}/interaction-check.log
+            ${{ runner.temp }}/interaction-scale.json
+          retention-days: 7
