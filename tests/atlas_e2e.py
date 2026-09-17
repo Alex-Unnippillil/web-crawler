@@ -6,13 +6,14 @@ stay off until requested; only generated demo PNGs are used by this test.
 import json
 from pathlib import Path
 from playwright.sync_api import expect
+from ui_actions import start_sample
 
 
 def run_visual_checks(page, docs: Path):
     page.set_viewport_size({"width": 1600, "height": 1100})
-    page.get_by_role("button", name="Explore visual demo", exact=True).click()
+    start_sample(page, "atlas-demo")
     expect(page.locator("#crawl-status")).to_contain_text("Completed", timeout=30000)
-    expect(page.locator("#metric-pages")).to_have_text("37")
+    expect(page.locator("#metric-pages")).to_have_text("37", timeout=30000)
     expect(page.locator("#metric-images")).to_have_text("8")
     expect(page.locator("#metric-resources")).to_have_text("7")
     expect(page.locator("#spiderweb")).to_be_visible()
@@ -41,7 +42,7 @@ def run_visual_checks(page, docs: Path):
     page.locator("#map-search").fill("/gallery/coast")
     assert page.locator(".atlas-node").count() == 1
     page.locator("#map-search").fill("")
-    page.get_by_label("External links", exact=True).check()
+    page.locator('[data-map-state="external"]').check()
     assert page.locator(".atlas-node").count() == 42
     page.locator("#map-group").select_option("guides")
     assert page.locator(".atlas-node").count() == 6
@@ -140,7 +141,7 @@ def run_visual_checks(page, docs: Path):
     page.get_by_role("tab", name="Elements", exact=True).click()
     page.screenshot(path=str(docs / "atlas-mobile.png"), full_page=True)
     page.reload(wait_until="networkidle")
-    expect(page.locator("#metric-pages")).to_have_text("37")
+    expect(page.locator("#metric-pages")).to_have_text("37", timeout=30000)
     page.get_by_role("tab", name="Elements", exact=True).click()
     expect(page.get_by_role("button", name="Load previews", exact=True)).to_be_visible()
     print(json.dumps({"atlas": "PASS", "pages": 37, "images": 8, "resources": 7,

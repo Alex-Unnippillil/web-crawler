@@ -1,6 +1,8 @@
 // Repository note: Implements browser-side Studio interactions, views, filtering, history, controls, and exports.
 // Browser-side controller for Web Crawler Studio: forms, live progress, results, history, and exports.
 
+import { sectionDetails, preserveResultPosition, normalizeWebsite, describePlan } from './interaction.js';
+import { PageSelection, sortPages, pageColumns, columnLabels, visibleColumns, pageGrid, type PageColumn, type PageSort } from './page-grid.js';
 import { ConnectionUI } from './connection.js';
 import { Workbench } from './workbench.js';
 import { workbenchTabs, type WorkbenchTab } from './workbench-model.js';
@@ -15,6 +17,9 @@ import type { CrawledPage } from '../src/types.js';
 type Tab = 'overview' | 'pages' | 'issues' | 'graph' | 'paths' | 'elements' | 'activity' | WorkbenchTab;
 type Issue = { title: string; detail: string; url: string; severity: 'error' | 'review' | 'info' };
 const icons: Record<string, string> = {
+  sidebar: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/>',
+  settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',
+  columns: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', close: '<path d="m6 6 12 12M6 18 18 6"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -48,7 +53,12 @@ let issueFilter = 'All';
 let query = ''; let pageIndex = 0; let busy = false; let offline = false; let loading = false; let mutation = false;
 let view: 'workspace' | 'history' = location.hash === '#history' ? 'history' : 'workspace';
 let etag = ''; let toastTimer: ReturnType<typeof setTimeout>; let confirmAction: (() => Promise<void>) | undefined;
-const PAGE_SIZE = 20;
+let pageSize = 20;
+let homeRequested = false;
+const selection = new PageSelection();
+let columns: PageColumn[] = [...pageColumns];
+try { const saved = localStorage.getItem('studio-page-columns-v1'); if (saved) columns = visibleColumns(JSON.parse(saved)); } catch { /* optional presentation preference */ }
+const queries: Record<string,string> = { pages: '', issues: '' };
 const atlas = new AtlasWorkspace({ openPage, notify: toast, api: path => api(path), navigate: next => { showView('workspace'); setTab(next as Tab); } });
 const host = { openPage, notify: toast, api: (path: string) => api(path), navigate: (next: string) => { showView('workspace'); setTab(next as Tab); } };
 const workbench = new Workbench(host);
@@ -65,13 +75,14 @@ async function api(path: string, method = 'GET', data?: unknown): Promise<Respon
   return response;
 }
 function toast(message: string): void { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 5000); }
-function showDialog(id: string): void { $<HTMLDialogElement>(id).showModal(); }
+function showDialog(id: string): void { const dialog = $<HTMLDialogElement>(id); if (!dialog.open) dialog.showModal(); }
 function closeDialog(id: string): void { $<HTMLDialogElement>(id).close(); }
 function showView(next: typeof view): void {
-  view = next; location.hash = next; $('workspace-view').hidden = next !== 'workspace'; $('history-view').hidden = next !== 'history';
+  view = next; location.hash = next; document.body.dataset.view = next; $('workspace-view').hidden = next !== 'workspace'; $('history-view').hidden = next !== 'history';
   $('breadcrumb-current').textContent = next === 'workspace' ? (tab === 'graph' ? 'Visual Atlas' : tab[0]!.toUpperCase()+tab.slice(1)) : 'Crawl history';
   document.querySelectorAll<HTMLElement>('[data-view]').forEach(el => el.classList.toggle('selected', el.dataset.view === next));
   if (next === 'history') renderHistory();
+  $('home-button').classList.toggle('selected', next === 'workspace' && (homeRequested || !selected));
 }
 function setConnection(connected: boolean, message = ''): void {
   offline = !connected;
@@ -114,22 +125,32 @@ function filteredIssues(): Issue[] {
   return (selected ? issues(selected) : []).filter(i => (issueFilter === 'All' || issueGroup(i) === issueFilter) && `${i.title} ${i.detail} ${i.url}`.toLowerCase().includes(query));
 }
 function renderSidebar(): void {
+  $('home-recent-list').innerHTML = jobs.length ? jobs.slice(0, 3).map(j => `<button class="home-recent" data-job="${esc(j.id)}"><span class="site-avatar">${esc(j.name.charAt(0).toUpperCase())}</span><span><strong>${esc(j.name)}</strong><small>${fmt(j.pages)} pages · ${esc(labelStatus(j))}</small></span>${icon('arrow')}</button>`).join('') : '<p class="home-empty">No crawls yet. Start with your website or explore a sample above.</p>';
   $('history-count').textContent = String(jobs.length);
   $('recent').innerHTML = jobs.length ? jobs.slice(0, 6).map(j => `<button class="recent-item ${esc(j.status)} ${j.id === selectedID ? 'current' : ''}" data-job="${esc(j.id)}" title="${esc(j.name)}"><span class="status-dot"></span><span>${esc(j.name)}</span></button>`).join('') : '<p class="sidebar-empty">Your recent crawls will appear here. Start with a website or the local demo.</p>';
 }
 function renderHistory(): void {
-  $('history-list').innerHTML = jobs.length ? jobs.map(j => `<article class="history-card"><div class="site-avatar">${esc(j.name.charAt(0).toUpperCase())}</div><div class="history-info"><h3>${esc(j.name)}</h3><p>${esc(j.url)}</p></div><div class="history-meta">${fmt(j.pages)} pages · ${duration(j.durationMs)}<span>${new Date(j.createdAt).toLocaleString()}</span></div><span class="badge ${esc(j.status)}">${esc(labelStatus(j))}</span><button class="button" data-job="${esc(j.id)}">Open ${icon('arrow')}</button><button class="icon-button" data-delete="${esc(j.id)}" ${active(j) ? 'disabled' : ''} aria-label="Delete ${esc(j.name)}">${icon('trash')}</button></article>`).join('') : `<div class="results-panel empty-state">${icon('clock')}<h3>A fresh workspace</h3><p>Your saved crawls will appear here. Start a crawl from the New crawl button.</p></div>`;
+  const q = $<HTMLInputElement>('history-search').value.trim().toLowerCase();
+  const filter = $<HTMLSelectElement>('history-filter').value;
+  const list = jobs.filter(j => `${j.name} ${j.url}`.toLowerCase().includes(q) &&
+    (filter === 'all' || filter === 'completed' && j.status === 'completed' || filter === 'active' && active(j) || filter === 'attention' && (j.failures > 0 || ['failed','blocked','interrupted','stopped'].includes(j.status))))
+    .sort((a,b) => $<HTMLSelectElement>('history-sort').value === 'name' ? a.name.localeCompare(b.name) : $<HTMLSelectElement>('history-sort').value === 'pages' ? b.pages-a.pages : Date.parse(b.createdAt)-Date.parse(a.createdAt));
+  $('history-result-count').textContent = `${list.length} of ${jobs.length} crawls`;
+  $('history-list').innerHTML = list.length ? list.map(j => `<article class="history-card"><div class="site-avatar">${esc(j.name.charAt(0).toUpperCase())}</div><div class="history-info"><h3>${esc(j.name)}</h3><p>${esc(j.url)}</p></div><div class="history-meta">${fmt(j.pages)} pages · ${duration(j.durationMs)}<span>${new Date(j.createdAt).toLocaleString()}</span></div><span class="badge ${esc(j.status)}">${esc(labelStatus(j))}</span><button class="button" data-job="${esc(j.id)}">Open ${icon('arrow')}</button><button class="icon-button" data-delete="${esc(j.id)}" ${active(j) ? 'disabled' : ''} aria-label="Delete ${esc(j.name)}">${icon('trash')}</button></article>`).join('') : `<div class="results-panel empty-state">${icon('clock')}<h3>${jobs.length ? 'No crawls match these filters' : 'A fresh workspace'}</h3><p>${jobs.length ? 'Try another website name or reset the filters.' : 'Start a crawl to build your local research library.'}</p><button class="button" data-action="${jobs.length ? 'history-reset' : 'new'}">${jobs.length ? 'Reset history filters' : 'New crawl'}</button></div>`;
 }
 function updateElapsed(): void {
   if (!selected) return;
   $('elapsed').textContent = `${active(selected) ? duration(Date.now() - Date.parse(selected.createdAt)) : duration(selected.durationMs)} elapsed`;
 }
 function renderCrawl(): void {
-  document.body.classList.toggle('has-crawl', !!selected);
-  $('welcome').hidden = !!selected; $('getting-started').hidden = !!selected; $('crawl-section').hidden = !selected;
+  const showResults = !!selected && !homeRequested;
+  document.body.classList.toggle('has-crawl', showResults);
+  $('welcome').hidden = showResults; $('getting-started').hidden = showResults; $('crawl-section').hidden = !showResults;
+  $('home-button').classList.toggle('selected', view === 'workspace' && !showResults);
+  if (!showResults) $('breadcrumb-current').textContent = view === 'history' ? 'Crawl history' : 'Home';
   if (!selected) return;
-  const j = selected; const r = j.result; const s = r?.summary; const allIssues = issues(j);
-  $('crawl-name').textContent = j.name; $('crawl-url').textContent = `${j.demo ? 'LOCAL DEMONSTRATION · ' : ''}${j.url}`;
+  const j = selected; document.body.dataset.crawlStatus = j.status; const r = j.result; const s = r?.summary; const allIssues = issues(j);
+  $('crawl-name').textContent = j.name; $('crawl-name').title = j.name; $('crawl-url').textContent = `${j.demo ? 'LOCAL DEMONSTRATION · ' : ''}${j.url}`;
   $('site-avatar').textContent = j.name.charAt(0).toUpperCase();
   $('crawl-status').className = `badge ${j.status}`; if ($('crawl-status').textContent !== labelStatus(j)) $('crawl-status').textContent = labelStatus(j);
   const pause = $<HTMLButtonElement>('pause-button'); pause.hidden = !['running', 'paused'].includes(j.status); pause.disabled = offline || mutation;
@@ -166,18 +187,57 @@ function renderCrawl(): void {
   }
   $('crawl-telemetry').hidden = !!failure && !s?.pages_crawled;
   document.querySelector<HTMLElement>('#crawl-section > .metrics')!.hidden = !!failure && !s?.pages_crawled;
+  $('run-diagnostics').hidden = !!failure && !s?.pages_crawled;
+  $('run-detail-summary').textContent = `${j.options.mode ?? 'http'} · ${s?.requests ?? 0} requests · ${s?.retries ?? 0} retries`;
+  selection.use(j.id, Object.values(r?.pages ?? {}));
   renderTelemetry($('crawl-telemetry'), j);
   updateElapsed(); renderResults();
 }
 function pageList(): CrawledPage[] {
   const filter = $<HTMLSelectElement>('page-filter').value;
   const review = new Set(selected ? issues(selected).map(i => i.url) : []);
-  return Object.values(selected?.result?.pages ?? {}).filter(p => (!query || `${p.url} ${p.title} ${p.heading}`.toLowerCase().includes(query)) &&
+  const filtered = Object.values(selected?.result?.pages ?? {}).filter(p => (!query || `${p.url} ${p.title} ${p.heading}`.toLowerCase().includes(query)) &&
     (filter === 'all' || filter === 'browser' && p.rendering?.method === 'browser' || filter === 'http' && p.rendering?.method !== 'browser' || filter === 'render-failed' && !!p.rendering?.failure || filter === 'sitemap' && p.discovery?.method === 'sitemap' || filter === 'review' && review.has(p.url) || filter === 'external' && p.external_links.length > 0 || filter === 'no-external' && !p.external_links.length))
-    .sort((a, b) => { switch ($<HTMLSelectElement>('sort').value) { case 'depth': return a.depth - b.depth || a.url.localeCompare(b.url); case 'duration': return b.duration_ms - a.duration_ms; case 'links': return b.outgoing_links.length - a.outgoing_links.length; default: return a.url.localeCompare(b.url); } });
+  ;
+  const [key, descending] = pageSort();
+  return sortPages(filtered, key, descending);
+}
+function pageSort(): [PageSort, boolean] {
+  const value = $<HTMLSelectElement>('sort').value;
+  if (value === 'links') return ['internal', true];
+  if (value === 'duration') return ['duration', true];
+  return [value.replace(/-(desc|asc)$/, '') as PageSort, value.endsWith('-desc')];
+}
+function clearFilters(): void {
+  query = ''; queries[tab] = ''; $<HTMLInputElement>('search').value = '';
+  $<HTMLSelectElement>('page-filter').value = 'all'; issueFilter = 'All'; pageIndex = 0; renderResults();
+}
+function syncPageSelection(rows = pageList()): void {
+  const selectedCount = selection.urls.size;
+  $('page-selection').hidden = tab !== 'pages' || !selectedCount;
+  $('selection-count').textContent = `${selectedCount} selected`;
+  const matched = new Set(rows.map(p => p.url));
+  const hidden = [...selection.urls].filter(url => !matched.has(url)).length;
+  $('selection-hidden').textContent = hidden ? `${hidden} outside current filters` : '';
+  $('pages-export').textContent = selectedCount ? `Export selected CSV (${selectedCount})` : 'Export filtered CSV';
+  $<HTMLButtonElement>('pages-export').disabled = !selectedCount && !rows.length;
+  const all = $<HTMLInputElement>('select-visible');
+  if (all) {
+    const shown = rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+    const n = shown.filter(p => selection.urls.has(p.url)).length;
+    all.checked = !!shown.length && n === shown.length; all.indeterminate = n > 0 && n < shown.length;
+  }
+}
+function updatePlan(): void {
+  const form = new FormData($<HTMLFormElement>('crawl-form'));
+  $('crawl-plan').textContent = describePlan(String(form.get('mode')), Number(form.get('maxPages')), Number(form.get('duration')));
 }
 function setTab(next: Tab): void {
-  tab = next; pageIndex = 0;
+  if (next !== tab) { queries[tab] = query; query = queries[next] ?? ''; $<HTMLInputElement>('search').value = query; }
+  homeRequested = false; tab = next; pageIndex = 0;
+  document.body.classList.toggle('has-crawl', !!selected);
+  $('welcome').hidden = !!selected; $('getting-started').hidden = !!selected; $('crawl-section').hidden = !selected;
+  $('home-button').classList.remove('selected');
   document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(el => {
     const chosen = el.dataset.tab === tab; el.classList.toggle('active', chosen); el.setAttribute('aria-selected', String(chosen)); el.tabIndex = chosen ? 0 : -1;
   });
@@ -191,6 +251,10 @@ function renderResults(): void {
   $('page-filter').hidden = tab !== 'pages'; $('sort').hidden = tab !== 'pages';
   $<HTMLInputElement>('search').placeholder = tab === 'issues' ? 'Search issues and URLs…' : 'Search pages, titles, or URLs…';
   const target = $('result-content');
+  $('workspace-title').textContent = sectionDetails[tab]![0];
+  $('workspace-description').textContent = sectionDetails[tab]![1];
+  $('page-viewbar').hidden = tab !== 'pages'; $('page-columns').hidden = tab !== 'pages';
+  $('page-selection').hidden = tab !== 'pages' || !selection.urls.size;
   if (workbenchTabs.includes(tab as WorkbenchTab)) { atlas.leave(); workbench.show(target, tab as WorkbenchTab, selected); return; }
   workbench.leave();
   if (['overview', 'graph', 'paths', 'elements'].includes(tab)) { atlas.render(target, tab as AtlasTab, selected); return; }
@@ -205,12 +269,18 @@ function renderResults(): void {
     target.insertAdjacentHTML('afterbegin', `<div class="issue-categories" role="group" aria-label="Issue category filters">${categories.map(category => `<button class="button" data-issue-category="${esc(category)}" aria-pressed="${category===issueFilter}">${esc(category)} <span>${category==='All'?all.length:all.filter(i=>issueGroup(i)===category).length}</span></button>`).join('')}<button class="button" data-action="issues-csv">Export filtered issues</button></div>`);
     return;
   }
-  const pages = pageList(); const totalPages = Math.max(1, Math.ceil(pages.length / PAGE_SIZE));
+  const pages = pageList(); const totalPages = Math.max(1, Math.ceil(pages.length / pageSize));
   pageIndex = Math.max(0, Math.min(pageIndex, totalPages - 1));
-  const shown = pages.slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE);
+  const shown = pages.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   const review = new Set(selected ? issues(selected).map(i => i.url) : []);
-  target.innerHTML = shown.length ? `<div class="table-scroll" tabindex="0" role="region" aria-label="Page inventory"><table><thead><tr><th>Page / URL</th><th>Status</th><th>Method</th><th>Words</th><th>Depth</th><th>Internal</th><th>External</th><th>Duration</th><th><span class="sr-only">Inspect</span></th></tr></thead><tbody>${shown.map(p => `<tr><td><div class="page-cell"><span class="page-icon">${icon('file')}</span><button class="page-link" data-page="${esc(p.url)}" title="Inspect ${esc(p.url)}"><strong>${esc(p.title || p.heading || 'Untitled page')}${review.has(p.url) ? '<span class="tiny-dot" title="Needs review"></span>' : ''}</strong><small>${esc(new URL(p.url).pathname + new URL(p.url).search)}</small></button></div></td><td><span class="http-status">${p.status_code} OK</span></td><td><span class="method-${p.rendering?.method ?? 'http'}" title="${esc(p.rendering?.failure || p.rendering?.reasons.join('; ') || '')}">${p.rendering?.method === 'browser' ? 'BROWSER' : 'HTTP'}${p.rendering?.failure ? ' !' : ''}</span></td><td>${p.inspection?.word_count ?? '—'}</td><td>${p.discovery?.method === 'sitemap' ? 'seed' : p.depth}</td><td>${p.internal_links.length}</td><td>${p.external_links.length}</td><td class="duration">${fmt(p.duration_ms)} ms</td><td><button class="icon-button" data-page="${esc(p.url)}" aria-label="Inspect ${esc(p.title || p.url)}">${icon('right')}</button></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty-state">${icon(query ? 'search' : active(selected) ? 'globe' : 'file')}<h3>${query || $<HTMLSelectElement>('page-filter').value !== 'all' ? 'No matching pages' : active(selected) ? 'Discovering your first pages' : 'No HTML pages collected'}</h3><p>${query ? 'Try a different search or clear the filters.' : active(selected) ? 'Checking robots.txt and fetching the starting URL…' : 'Open Issues and Activity for details about this run.'}</p></div>`;
-  $('result-count').textContent = pages.length ? `Showing ${pageIndex * PAGE_SIZE + 1}–${Math.min((pageIndex + 1) * PAGE_SIZE, pages.length)} of ${fmt(pages.length)} pages` : '0 pages';
+  const [sortKey, descending] = pageSort();
+  const restore = preserveResultPosition(target);
+  const filtered = !!query || $<HTMLSelectElement>('page-filter').value !== 'all';
+  target.innerHTML = shown.length ? pageGrid({ pages: shown, selected: selection.urls, columns, sort: sortKey, descending, review }) : `<div class="empty-state">${icon(filtered ? 'search' : active(selected) ? 'globe' : 'file')}<h3>${filtered ? 'No matching pages' : active(selected) ? 'Discovering your first pages' : 'No HTML pages collected'}</h3><p>${filtered ? 'Your crawl is still here. Reset the filters to see all captured pages.' : active(selected) ? 'Checking robots.txt and fetching the starting URL…' : 'Review Issues or check the connection for this run.'}</p>${filtered ? '<button class="button" data-action="clear-filters">Reset filters</button>' : !active(selected) ? '<button class="button" data-section="issues">Review issues</button>' : ''}</div>`;
+  $('clear-filters').hidden = !filtered;
+  document.querySelectorAll<HTMLElement>('[data-page-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.pageFilter === $<HTMLSelectElement>('page-filter').value)));
+  syncPageSelection(pages); restore();
+  $('result-count').textContent = pages.length ? `Showing ${pageIndex * pageSize + 1}–${Math.min((pageIndex + 1) * pageSize, pages.length)} of ${fmt(pages.length)} pages` : '0 pages';
   $('pagination').textContent = `${pageIndex + 1} / ${totalPages}`;
   document.querySelector<HTMLButtonElement>('[data-action="previous"]')!.disabled = pageIndex === 0;
   document.querySelector<HTMLButtonElement>('[data-action="next"]')!.disabled = pageIndex + 1 >= totalPages;
@@ -219,7 +289,7 @@ function renderResults(): void {
 function safeLink(url: string): string {
   try { const parsed = new URL(url); return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password ? `<a href="${esc(parsed.href)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>` : esc(url); } catch { return esc(url); }
 }
-function openPage(url: string): void { if (selected) inspector.open(selected, url, tab === 'javascript' ? 'javascript' : tab === 'resources' ? 'network' : 'overview'); }
+function openPage(url: string): void { if (selected) inspector.open(selected, url, tab === 'javascript' ? 'javascript' : tab === 'resources' ? 'network' : 'overview', (tab === 'pages' ? pageList() : Object.values(selected.result?.pages ?? {})).map(p => p.url)); }
 async function loadJob(id: string, force = false): Promise<void> {
   const captured = id;
   const response = await fetch(`/api/jobs/${encodeURIComponent(id)}`, { headers: { 'X-Crawler-Token': token, ...(!force && id === selectedID && etag ? { 'If-None-Match': etag } : {}) } });
@@ -230,6 +300,7 @@ async function loadJob(id: string, force = false): Promise<void> {
   selected = data; selectedID = id; etag = response.headers.get('etag') ?? ''; renderCrawl(); renderSidebar();
 }
 async function chooseJob(id: string): Promise<void> {
+  homeRequested = false; selection.clear(); queries.pages = ''; queries.issues = ''; issueFilter = 'All';
   selectedID = id; selected = undefined; etag = ''; query = ''; $<HTMLInputElement>('search').value = ''; pageIndex = 0;
   $<HTMLSelectElement>('page-filter').value = 'all'; setTab('pages'); showView('workspace');
   await loadJob(id, true);
@@ -241,7 +312,7 @@ async function poll(): Promise<void> {
     if (data.browser) $('browser-availability').textContent = data.browser.message;
     const prev = JSON.stringify(jobs); jobs = data.jobs; busy = data.busy; setConnection(true); $('data-directory').textContent = data.dataDirectory;
     if (JSON.stringify(jobs) !== prev) { renderSidebar(); if (view === 'history') renderHistory(); }
-    if (!selectedID && jobs.length) { selectedID = jobs[0]!.id; await loadJob(selectedID, true); }
+    if (!selectedID && jobs.length && !homeRequested) { selectedID = jobs[0]!.id; await loadJob(selectedID, true); }
     else if (selectedID) {
       const meta = jobs.find(j => j.id === selectedID);
       if (!meta) { selectedID = ''; selected = undefined; renderCrawl(); }
@@ -265,15 +336,15 @@ function showNew(rerun = false): void {
     field('timeout').value = String(o.timeoutMs / 1000); field('duration').value = String(o.maxDurationMs / 60000); field('stripTracking').checked = o.stripTracking;
     form.querySelector<HTMLDetailsElement>('details')!.open = true;
   }
-  showDialog('crawl-dialog'); $<HTMLInputElement>('url-input').focus();
+  updatePlan(); showDialog('crawl-dialog'); $<HTMLInputElement>('url-input').focus();
 }
 async function startCrawl(demo = false, visual = false, hybrid = false): Promise<void> {
   if (mutation || busy) return; mutation = true; setConnection(!offline);
-  const startButton = $<HTMLButtonElement>('start-button'); startButton.disabled = true;
+  const startButton = $<HTMLButtonElement>('start-button'); startButton.disabled = true; startButton.setAttribute('aria-busy', 'true');
   try {
     const form = new FormData($<HTMLFormElement>('crawl-form'));
     let url = String(form.get('url') ?? '').trim();
-    if (!demo && !/^[a-z][a-z\d+.-]*:/i.test(url)) url = `https://${url}`;
+    if (!demo) url = normalizeWebsite(url);
     const number = (name: string) => Number(form.get(name));
     const data = demo ? { demo: true, atlas: visual, hybrid, options: { mode: hybrid ? 'smart' : 'http', discoverSitemaps: hybrid, scrollIterations: hybrid ? 2 : 0, maxPages: visual ? 100 : 50, delayMs: hybrid || visual ? 100 : 350, extractionRules: hybrid ? [{ name: 'Price', selector: '.product-price', mode: 'text' }] : [] } } : { url, name: form.get('name'), options: {
       mode: String(form.get('mode') ?? 'smart'), browserConcurrency: number('browserConcurrency'), renderTimeoutMs: number('renderTimeout') * 1000, scrollIterations: number('scrollIterations'), discoverSitemaps: form.get('discoverSitemaps') === 'on', captureScreenshots: form.get('captureScreenshots') === 'on', adaptiveConcurrency: form.get('adaptiveConcurrency') === 'on', sitemapURLs: String(form.get('sitemapURLs') ?? '').split(/\r?\n/).map(x => x.trim()).filter(Boolean), extractionRules: profiles.getRules(),
@@ -282,10 +353,12 @@ async function startCrawl(demo = false, visual = false, hybrid = false): Promise
     } };
     const job = await (await api('/api/jobs', 'POST', data)).json() as Job;
     if ($<HTMLDialogElement>('crawl-dialog').open) closeDialog('crawl-dialog');
+    if ($<HTMLDialogElement>('examples-dialog').open) closeDialog('examples-dialog');
+    homeRequested = false; selection.clear(); queries.pages = ''; queries.issues = '';
     busy = true; selectedID = job.id; selected = job; etag = ''; query = ''; $<HTMLInputElement>('search').value = ''; pageIndex = 0;
     issueFilter = 'All'; setTab(hybrid ? 'javascript' : visual ? 'graph' : 'pages'); showView('workspace'); renderCrawl(); toast(demo ? 'Crawling the local demo site. No external website is fetched.' : 'Crawl started. You can pause or stop at any time.');
   } catch (error) { if ($<HTMLDialogElement>('crawl-dialog').open) { $('form-error').textContent = String(error).replace(/^Error: /, ''); $('form-error').hidden = false; } else toast(String(error).replace(/^Error: /, '')); }
-  finally { mutation = false; startButton.disabled = false; renderCrawl(); await poll(); }
+  finally { mutation = false; startButton.disabled = false; startButton.removeAttribute('aria-busy'); renderCrawl(); await poll(); }
 }
 function confirm(title: string, message: string, action: () => Promise<void>): void {
   $('confirm-title').textContent = title; $('confirm-message').textContent = message; $('confirm-accept').textContent = title.startsWith('Delete') ? 'Delete crawl' : 'Stop crawl'; confirmAction = action; showDialog('confirm-dialog');
@@ -306,11 +379,29 @@ function theme(toggle = false): void {
   let value = document.documentElement.dataset.theme ?? 'light'; try { value = document.documentElement.dataset.theme ?? localStorage.getItem('crawler-theme') ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch { /* storage can be disabled */ }
   if (toggle) value = value === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = value; $('theme-label').textContent = value === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  $('theme-toggle').setAttribute('aria-label', $('theme-label').textContent); $('theme-toggle').title = $('theme-label').textContent;
   try { localStorage.setItem('crawler-theme', value); } catch { /* optional preference */ }
 }
 document.addEventListener('click', e => {
-  const el = (e.target as Element).closest<HTMLElement>('button,[data-page],[data-view]'); if (!el) return;
+  const el = (e.target as Element).closest<HTMLElement>('button,[data-page],[data-view],a[data-action]'); if (!el) return;
   const run = async () => {
+    if (el instanceof HTMLButtonElement && el.disabled) return;
+    if (el.dataset.pageFilter) { $<HTMLSelectElement>('page-filter').value = el.dataset.pageFilter; pageIndex = 0; renderResults(); return; }
+    if (el.dataset.pageSort) {
+      const key = el.dataset.pageSort as PageSort; const [current, reverse] = pageSort();
+      const descending = key === current ? !reverse : ['words','internal','external','duration'].includes(key);
+      const value = key === 'internal' ? descending ? 'links' : 'internal' : key === 'duration' ? descending ? 'duration' : 'duration-asc' : `${key}${descending ? '-desc' : ''}`;
+      const sort = $<HTMLSelectElement>('sort'); if (!Array.from(sort.options).some(o => o.value === value)) sort.add(new Option(`${key} ${descending ? '↓' : '↑'}`, value));
+      sort.value = value; renderResults(); return;
+    }
+    if (el.dataset.metric) {
+      const destination = el.dataset.metric;
+      showView('workspace');
+      if (destination === 'images') { setTab('elements'); atlas.openImages(); }
+      else if (destination === 'links' || destination === 'links-external') { setTab('links'); workbench.setFilter('Type', destination === 'links' ? 'Internal' : 'External'); }
+      else setTab(destination as Tab);
+      return;
+    }
     if (el.dataset.issueCategory) { issueFilter = el.dataset.issueCategory; renderResults(); return; }
     if (el.dataset.section) { showView('workspace'); setTab(el.dataset.section as Tab); return; }
     if (el.dataset.command) { closeDialog('command-dialog'); runCommand(el.dataset.command); return; }
@@ -328,24 +419,39 @@ document.addEventListener('click', e => {
       confirm('Delete this crawl?', 'This permanently removes its saved results from this computer. Export anything you need first.', async () => { await api(`/api/jobs/${id}`, 'DELETE'); if (selectedID === id) { selectedID = ''; selected = undefined; etag = ''; renderCrawl(); } await poll(); toast('Crawl deleted.'); }); return;
     }
     switch (el.dataset.action) {
+      case 'home': e.preventDefault(); showView('workspace'); homeRequested = true; renderCrawl(); renderSidebar(); break;
+      case 'sidebar': toggleSidebar(); break;
+      case 'settings': showDialog('settings-dialog'); break;
+      case 'examples': showDialog('examples-dialog'); break;
+      case 'clear-filters': clearFilters(); break;
+      case 'clear-selection': selection.clear(); renderResults(); break;
+      case 'select-matches': selection.setPage(pageList(), true); renderResults(); break;
+      case 'copy-pages': {
+        const rows = selection.exportRows(Object.values(selected?.result?.pages ?? {}), pageList());
+        try { await navigator.clipboard.writeText(rows.map(p => p.url).join('\n')); toast(`${rows.length} URLs copied.`); }
+        catch { toast('Clipboard access is unavailable. Export the selected CSV instead.'); }
+        break;
+      }
+      case 'history-reset': $<HTMLInputElement>('history-search').value = ''; $<HTMLSelectElement>('history-filter').value = 'all'; renderHistory(); break;
+
       case 'check-connection': connectionUI.open(selected?.url ?? ''); break;
       case 'check-form': connectionUI.open($<HTMLInputElement>('url-input').value); break;
       case 'owner-access': connectionUI.openAccess(selected?.url ?? $<HTMLInputElement>('url-input').value); break;
       case 'glass': { const opaque = document.documentElement.dataset.transparency !== 'reduce'; document.documentElement.dataset.transparency = opaque ? 'reduce' : 'normal'; $('glass-label').textContent = opaque ? 'Enable glass effects' : 'Reduce transparency'; try { localStorage.setItem('crawler-transparency', opaque ? 'reduce' : 'normal'); } catch {} break; }
-      case 'new': showNew(); break; case 'help': showDialog('help-dialog'); break; case 'theme': theme(true); break;
+      case 'new': showNew(); break; case 'help': if ($<HTMLDialogElement>('settings-dialog').open) closeDialog('settings-dialog'); showDialog('help-dialog'); break; case 'theme': theme(true); break;
       case 'demo': await startCrawl(true); break;
       case 'hybrid-demo': await startCrawl(true, false, true); break;
       case 'browser-help': showDialog('browser-dialog'); break;
       case 'refresh-browser': { const data = await (await api('/api/browser')).json(); $('browser-check-result').textContent = data.message; $('browser-availability').textContent = data.message; break; }
       case 'issues-csv': saveFile(csv(filteredIssues().map(i => ({ Category: issueGroup(i), Severity: i.severity, Issue: i.title, URL: i.url, Evidence: i.detail }))), 'filtered-issues.csv', 'text/csv'); break;
-      case 'pages-csv': saveFile(csv(pageList().map(p => ({ URL: p.url, Title: p.title, Status: p.status_code, Method: p.rendering?.method ?? 'http', Words: p.inspection?.word_count, Depth: p.depth, Duration_ms: p.duration_ms }))), 'filtered-pages.csv', 'text/csv'); break;
+      case 'pages-csv': saveFile(csv(selection.exportRows(Object.values(selected?.result?.pages ?? {}), pageList()).map(p => ({ URL: p.url, Title: p.title, Status: p.status_code, Method: p.rendering?.method ?? 'http', Words: p.inspection?.word_count, Depth: p.depth, Duration_ms: p.duration_ms }))), selection.urls.size ? 'selected-pages.csv' : 'filtered-pages.csv', 'text/csv'); break;
       case 'atlas-demo': await startCrawl(true, true); break;
-      case 'commands': showDialog('command-dialog'); $('command-search').focus(); break;
+      case 'commands': showDialog('command-dialog'); $('command-search').dispatchEvent(new Event('input')); $('command-search').focus(); break;
       case 'density': toggleDensity(); break;
       case 'rerun': if (selected?.demo) await startCrawl(true, selected.demoMode === 'atlas', selected.demoMode === 'hybrid'); else showNew(true); break;
       case 'pause': await control(selected?.status === 'paused' ? 'resume' : 'pause'); break;
       case 'stop': confirm('Stop this crawl?', 'Completed pages will be saved and remain available to inspect and export.', () => control('stop')); break;
-      case 'export': showDialog('export-dialog'); break; case 'previous': pageIndex--; renderResults(); break; case 'next': pageIndex++; renderResults(); break;
+      case 'export': $('export-scope').textContent = `Entire crawl · ${selected?.pages ?? 0} HTML pages. For a filtered or selected page set, use the CSV action in Pages.`; showDialog('export-dialog'); break; case 'previous': pageIndex--; renderResults(); break; case 'next': pageIndex++; renderResults(); break;
     }
   };
   void run().catch(error => toast(String(error).replace(/^Error: /, '')));
@@ -389,7 +495,7 @@ function toggleDensity(): void {
 try { if (localStorage.getItem('crawler-density') === 'compact') toggleDensity(); } catch { /* optional preference */ }
 function runCommand(command: string): void {
   showView('workspace');
-  if (command === 'show 404s') { query = '404'; $<HTMLInputElement>('search').value = query; setTab('issues'); }
+  if (command === 'show 404s') { setTab('issues'); issueFilter = 'All'; query = '404'; $<HTMLInputElement>('search').value = query; renderResults(); }
   else if (command === 'javascript pages') { $<HTMLSelectElement>('page-filter').value = 'browser'; setTab('pages'); }
   else if (command === 'images missing alt') { setTab('elements'); atlas.openImages('missing'); }
   else if (command === 'external links') { setTab('links'); workbench.setFilter('Type','External'); }
@@ -405,10 +511,56 @@ $('command-search').addEventListener('input', () => {
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault(); if (document.querySelector('dialog[open]')) return;
-    showDialog('command-dialog'); $('command-search').focus();
+    showDialog('command-dialog'); $('command-search').dispatchEvent(new Event('input')); $('command-search').focus();
   }
 });
 
+
+$('quick-start').addEventListener('submit', event => {
+  event.preventDefault(); $('quick-error').hidden = true;
+  try { if (busy || offline || mutation) { toast('Finish the active crawl or reconnect before starting another.'); return; } const url = normalizeWebsite($<HTMLInputElement>('quick-url').value); showNew(); $<HTMLInputElement>('url-input').value = url; updatePlan(); }
+  catch (error) { $('quick-error').textContent = String(error).replace(/^Error: /, ''); $('quick-error').hidden = false; }
+});
+function toggleSidebar(): void {
+  const collapsed = document.documentElement.dataset.sidebar !== 'collapsed';
+  document.documentElement.dataset.sidebar = collapsed ? 'collapsed' : 'expanded';
+  $('sidebar-toggle').setAttribute('aria-expanded', String(!collapsed));
+  $('sidebar-toggle').setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  $('sidebar-toggle').title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+  try { localStorage.setItem('studio-sidebar-v1', collapsed ? 'collapsed' : 'expanded'); } catch { /* optional */ }
+}
+try { if (localStorage.getItem('studio-sidebar-v1') === 'collapsed') toggleSidebar(); } catch { /* optional */ }
+$('column-choices').innerHTML = '<strong>Visible columns</strong><span class="muted">Page / URL is always shown.</span>' + pageColumns.map(c => `<label><input type="checkbox" data-page-column="${c}" ${columns.includes(c) ? 'checked' : ''}>${columnLabels[c]}</label>`).join('');
+$('column-choices').addEventListener('change', () => {
+  columns = Array.from(document.querySelectorAll<HTMLInputElement>('[data-page-column]:checked')).map(el => el.dataset.pageColumn as PageColumn);
+  try { localStorage.setItem('studio-page-columns-v1', JSON.stringify(columns)); } catch { /* optional */ }
+  renderResults();
+});
+$('result-content').addEventListener('change', event => {
+  const input = event.target as HTMLInputElement;
+  if (input.dataset.selectUrl) selection.toggle(input.dataset.selectUrl, input.checked);
+  else if (input.id === 'select-visible') selection.setPage(pageList().slice(pageIndex * pageSize, (pageIndex + 1) * pageSize), input.checked);
+  else return;
+  renderResults();
+});
+$('page-size').addEventListener('change', () => { pageSize = Number($<HTMLSelectElement>('page-size').value); pageIndex = 0; renderResults(); });
+for (const id of ['history-search','history-filter','history-sort']) $(id).addEventListener(id === 'history-search' ? 'input' : 'change', renderHistory);
+$('crawl-form').addEventListener('input', updatePlan);
+$('crawl-form').addEventListener('change', () => { queueMicrotask(updatePlan); });
+$('crawl-form').addEventListener('invalid', event => {
+  const field = event.target as HTMLElement; field.closest<HTMLDetailsElement>('details')?.setAttribute('open', '');
+}, true);
+$('command-dialog').addEventListener('keydown', event => {
+  if (!['ArrowDown','ArrowUp','Enter'].includes(event.key)) return;
+  const options = Array.from($('command-results').querySelectorAll<HTMLButtonElement>('button'));
+  if (!options.length) return;
+  const index = options.indexOf(document.activeElement as HTMLButtonElement);
+  if (event.key === 'Enter') { if (document.activeElement === $('command-search')) { event.preventDefault(); options[0]!.click(); } return; }
+  event.preventDefault(); const next = event.key === 'ArrowDown' ? (index + 1) % options.length : index <= 0 ? options.length - 1 : index - 1;
+  options[next]!.focus();
+});
+document.addEventListener('pointerdown', event => { const columns = $<HTMLDetailsElement>('page-columns'); if (columns.open && !columns.contains(event.target as Node)) columns.open = false; });
+$('page-columns').addEventListener('keydown', event => { if (event.key === 'Escape') { $<HTMLDetailsElement>('page-columns').open = false; $('page-columns').querySelector<HTMLElement>('summary')?.focus(); } });
 hydrate(); theme(); showView(view); renderSidebar(); renderCrawl(); void poll();
 setInterval(() => { updateElapsed(); if (!document.hidden) void poll(); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void poll(); });

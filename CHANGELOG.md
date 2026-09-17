@@ -1,6 +1,15 @@
 <!-- Repository note: Records user-visible changes between project versions. -->
 # Changelog
 
+## 4.3.0 — Interaction workspace (2026-09-17)
+
+- Add URL-first Home with review before crawling, recent runs and a focused sample picker.
+- Group sidebar navigation, add a persistent icon rail and collect appearance controls in Workspace settings.
+- Add sortable page headers, column visibility, row selection across pagination, explicit filtered/selected CSV, copy URLs and no-match recovery.
+- Add Previous/Next inspector navigation that retains the active tab and current filtered order.
+- Preserve table scroll/focus on selection and refresh; improve history search, commands and responsive button layouts.
+- Keep existing crawler/security/owner-access behavior and regression coverage unchanged; add real end-user browser acceptance.
+
 ## 4.2.0 — Glass Workbench
 
 - Diagnose explicit access checkpoints without confusing them with transient rate limits or successful pages.

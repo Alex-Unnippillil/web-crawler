@@ -10,6 +10,7 @@ import tempfile
 import time
 import urllib.request
 from playwright.sync_api import sync_playwright, expect
+from ui_actions import start_sample
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / 'docs'
@@ -36,7 +37,7 @@ with tempfile.TemporaryDirectory(prefix='crawler-hybrid-ui-') as directory:
             page.on('pageerror',lambda error:errors.append(str(error)))
             page.on('console',lambda message:errors.append(message.text) if message.type=='error' else None)
             page.goto(url,wait_until='networkidle')
-            page.locator('[data-action="hybrid-demo"]').filter(visible=True).first.click()
+            start_sample(page, "hybrid-demo")
             expect(page.locator('#crawl-status')).to_contain_text('Completed',timeout=45000)
             expect(page.locator('#wb-grid')).to_contain_text('BROWSER',timeout=10000)
             page.locator('[data-wb-filter="Method"]').select_option('BROWSER')

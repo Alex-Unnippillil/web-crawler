@@ -12,14 +12,43 @@ export class PageInspector {
   private sequence = 0; private blob = ''; private job?: Job; private url = ''; private tab: InspectTab = 'overview';
   private evidence?: BrowserEvidence; private error = ''; private loading = false;
   private host: AtlasHost;
+  private order: string[] = []; private returnFocus?: HTMLElement; private returnURL = '';
   constructor(host: AtlasHost) {
     this.host = host;
-    document.getElementById('detail-dialog')!.addEventListener('close', () => { this.sequence++; this.revoke(); this.evidence = undefined; });
+    const dialog = document.getElementById('detail-dialog')!;
+    const pager = document.createElement('div'); pager.className = 'inspector-pager';
+    pager.innerHTML = '<button class="button" id="inspect-previous" aria-label="Inspect previous page" title="Previous page (Alt + Left)">← Previous</button><span id="inspect-position" role="status"></span><button class="button" id="inspect-next" aria-label="Inspect next page" title="Next page (Alt + Right)">Next →</button>';
+    dialog.querySelector('.modal-header')!.after(pager);
+    document.getElementById('inspect-previous')!.addEventListener('click', () => this.move(-1));
+    document.getElementById('inspect-next')!.addEventListener('click', () => this.move(1));
+    dialog.addEventListener('keydown', e => { if (e.altKey && ['ArrowLeft','ArrowRight'].includes(e.key)) { e.preventDefault(); this.move(e.key === 'ArrowRight' ? 1 : -1); } });
+    dialog.addEventListener('close', () => {
+      this.sequence++; this.revoke(); this.evidence = undefined;
+      const fallback = this.returnURL ? document.querySelector<HTMLElement>(`#result-content [data-page="${CSS.escape(this.returnURL)}"]`) : undefined;
+      (this.returnFocus?.isConnected ? this.returnFocus : fallback)?.focus({preventScroll:true});
+    });
   }
   private revoke(): void { if (this.blob) URL.revokeObjectURL(this.blob); this.blob = ''; }
-  open(job: Job, url: string, tab: InspectTab = 'overview'): void {
+  open(job: Job, url: string, tab: InspectTab = 'overview', order?: string[]): void {
+    const existing = document.getElementById('detail-dialog') as HTMLDialogElement;
+    if (!existing.open) { this.returnFocus = document.activeElement as HTMLElement; this.returnURL = this.returnFocus?.dataset.page ?? ''; }
+    this.order = [...new Set(order ?? Object.keys(job.result?.pages ?? {}))].filter(key => !!job.result?.pages[key]);
     this.sequence++; this.revoke(); this.job = job; this.url = url; this.tab = tab; this.evidence = undefined; this.error = ''; this.loading = false;
-    this.draw(); const dialog = document.getElementById('detail-dialog') as HTMLDialogElement; if (!dialog.open) dialog.showModal();
+    this.draw(); this.refreshPaging(); document.getElementById('detail-content')!.scrollTop = 0; const dialog = document.getElementById('detail-dialog') as HTMLDialogElement; if (!dialog.open) dialog.showModal();
+  }
+  private refreshPaging(): void {
+    const index = this.order.indexOf(this.url);
+    document.getElementById('inspect-position')!.textContent = index < 0 ? 'URL inspection' : `${index + 1} of ${this.order.length} pages`;
+    (document.getElementById('inspect-previous') as HTMLButtonElement).disabled = index <= 0;
+    (document.getElementById('inspect-next') as HTMLButtonElement).disabled = index < 0 || index >= this.order.length - 1;
+  }
+  private move(direction: number): void {
+    const i = this.order.indexOf(this.url); const next = this.order[i + direction];
+    if (i < 0 || !next || !this.job) return;
+    this.open(this.job, next, this.tab, this.order);
+    const button = document.getElementById(direction > 0 ? 'inspect-next' : 'inspect-previous') as HTMLButtonElement;
+    if (button.disabled) document.getElementById('inspect-position')!.setAttribute('tabindex','-1');
+    (button.disabled ? document.getElementById('inspect-position')! : button).focus({preventScroll:true});
   }
   private async loadEvidence(): Promise<void> {
     if (this.evidence || this.loading || this.error || !this.job?.result?.pages[this.url]?.rendering?.artifact_id) return;
@@ -45,8 +74,11 @@ export class PageInspector {
   }
   private draw(): void {
     const page = this.job?.result?.pages[this.url]; const root = document.getElementById('detail-content')!;
+    const active = document.activeElement as HTMLElement | null; const focusID = active && root.contains(active) ? active.id : '';
+    const scroll = root.scrollTop;
     const inbound = Object.values(this.job?.result?.pages ?? {}).filter(p => p.internal_links.includes(this.url) || page && p.internal_links.includes(page.requested_url));
-    root.innerHTML = `<div class="inspect-identity"><h3>${esc(page?.title || page?.heading || 'URL inspection')}</h3><p>${externalLink(this.url)}</p><div class="inspect-badges"><span class="method-${page?.rendering?.method ?? 'http'}">${page?.rendering?.method === 'browser' ? 'BROWSER' : 'HTTP'}</span><span>${esc(page?.status_code ?? 'Not collected')}</span><span>${page ? bytes(page.content_bytes) : ''}</span><button class="button" data-copy="${esc(this.url)}">Copy URL</button></div></div><div class="inspect-tabs" role="tablist" aria-label="Page inspection tabs">${tabs.map(t => `<button role="tab" id="inspect-tab-${t}" aria-selected="${t === this.tab}" tabindex="${t === this.tab ? 0 : -1}" data-inspect-tab="${t}">${t[0]!.toUpperCase()+t.slice(1)}</button>`).join('')}</div><div class="inspect-pane" role="tabpanel" aria-labelledby="inspect-tab-${this.tab}" tabindex="0">${page ? this.content(page, inbound) : `<p>${esc(this.job?.result?.errors.find(e => e.url === this.url)?.message ?? 'Discovered URL; no successful page record is available.')}</p><h3>Linked from · ${inbound.length}</h3>${this.linkList(inbound.map(p => p.url))}`}</div>`;
+    root.innerHTML = `<div class="inspect-identity"><h3>${esc(page?.title || page?.heading || 'URL inspection')}</h3><p>${externalLink(this.url)}</p><div class="inspect-badges"><span class="method-${page?.rendering?.method ?? 'http'}">${page?.rendering?.method === 'browser' ? 'BROWSER' : 'HTTP'}</span><span>${esc(page?.status_code ?? 'Not collected')}</span><span>${page ? bytes(page.content_bytes) : ''}</span><button class="button" data-copy="${esc(this.url)}">Copy URL</button></div></div><div class="inspect-tabs" role="tablist" aria-label="Page inspection tabs">${tabs.map(t => `<button role="tab" id="inspect-tab-${t}" aria-selected="${t === this.tab}" tabindex="${t === this.tab ? 0 : -1}" data-inspect-tab="${t}" aria-controls="inspection-pane">${t === 'structured' ? 'Structured data' : t[0]!.toUpperCase()+t.slice(1)}</button>`).join('')}</div><div id="inspection-pane" class="inspect-pane" role="tabpanel" aria-labelledby="inspect-tab-${this.tab}" tabindex="0">${page ? this.content(page, inbound) : `<p>${esc(this.job?.result?.errors.find(e => e.url === this.url)?.message ?? 'Discovered URL; no successful page record is available.')}</p><h3>Linked from · ${inbound.length}</h3>${this.linkList(inbound.map(p => p.url))}`}</div>`;
+    root.scrollTop = scroll; if (focusID) document.getElementById(focusID)?.focus({preventScroll:true});
     root.querySelectorAll<HTMLButtonElement>('[data-inspect-tab]').forEach(button => button.addEventListener('click', () => { this.tab = button.dataset.inspectTab as InspectTab; this.error = ''; this.draw(); }));
     root.querySelector('.inspect-tabs')!.addEventListener('keydown', event => {
       const e = event as KeyboardEvent; if (!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
