@@ -56,7 +56,7 @@ jobs:
           node tests/scale.mjs 1000 > "$RUNNER_TEMP/scale.json"
       - name: Preserve actual screenshots and scale measurements
         if: always() && runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gui-and-scale-${{ github.run_id }}
           path: |
