@@ -138,3 +138,16 @@ Source files contain explanatory comments. JSON/CSV, runtime-version files, imag
 | `docs/glass-workspace.png` | Actual glass-workspace acceptance screenshot using controlled fixtures. | No — binary format preserved |
 | `docs/glass-dark.png` | Actual glass-workspace acceptance screenshot using controlled fixtures. | No — binary format preserved |
 | `docs/glass-mobile.png` | Actual glass-workspace acceptance screenshot using controlled fixtures. | No — binary format preserved |
+| `docs/INTERFACE.md` | Daily UI workflows, selection semantics, keyboard shortcuts and scope. | Yes |
+| `ui/interaction.ts` | Presentation-only URL-entry, workspace descriptions and focus/scroll helpers. | Yes |
+| `ui/interaction.css` | Shared control hierarchy, grouped responsive layout, native table and inspector styling. | Yes |
+| `ui/page-grid.ts` | Pure page sorting, selection, allowlisted columns and escaped semantic inventory table. | Yes |
+| `tests/interaction.test.mjs` | Deterministic tests for the selection/sort/URL-entry presentation model. | Yes |
+| `tests/interaction_e2e.py` | Real end-user interaction acceptance invoked by the existing GUI suite. | Yes |
+| `tests/ui_actions.py` | Shared browser actions for the native sample picker. | Yes |
+| `docs/interaction-home.png` | Actual running-interface screenshot using controlled local fixtures. | No — binary image |
+| `docs/interaction-setup.png` | Actual running-interface screenshot using controlled local fixtures. | No — binary image |
+| `docs/interaction-pages.png` | Actual running-interface screenshot using controlled local fixtures. | No — binary image |
+| `docs/interaction-inspector.png` | Actual running-interface screenshot using controlled local fixtures. | No — binary image |
+| `docs/interaction-mobile.png` | Actual running-interface screenshot using controlled local fixtures. | No — binary image |
+| `docs/interaction-dark.png` | Actual running-interface screenshot using controlled local fixtures. | No — binary image |

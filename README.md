@@ -6,12 +6,17 @@
 [Download](https://github.com/Alex-Unnippillil/web-crawler/releases/latest) · [Getting started](#getting-started) · [Using the app](#using-the-app) · [Hybrid architecture](docs/HYBRID.md) · [Security](SECURITY.md)
 
 
-<img width="1600" height="1370" alt="image" src="https://github.com/user-attachments/assets/78e7363a-81aa-4f14-a3f5-d5098b97fea7" />
-
-
-
-
 Enter a URL, choose a crawl mode, and explore pages, links, images, resources, structured data, and site architecture. Smart mode uses lightweight HTTP first and escalates sparse application shells to a reusable Chromium browser only when needed. No cloud account, API key, hosted database, or subscription is required.
+
+## Interaction workspace — 4.3.0
+
+A URL-first **Home**, grouped sidebar and consistent controls make the day-to-day workflow clearer. Open **Examples** to choose a local sample instead of navigating competing demo buttons. Technical run telemetry remains under **Run details**, and summary metrics open the corresponding analysis.
+
+In **Pages**, combine search and quick filters, sort from column headings, choose visible columns and select rows across pagination. The CSV button explicitly distinguishes selected pages from filtered pages; selections hidden by a filter are counted. **Previous/Next** in the page inspector follows your filtered order without closing it. **Workspace settings** collects density, transparency and help; Home and searchable history make previous runs easier to find.
+
+![Page inventory in the running application](docs/interaction-pages.png)
+
+[Daily workflow, selection/export semantics and keyboard controls](docs/INTERFACE.md). Screenshots show the included local visual fixture, not an external-site crawl.
 
 ## Connection fixes and glass workspace
 
@@ -106,7 +111,7 @@ npm run gui
 ![JavaScript analysis in the running application](docs/hybrid-javascript.png)
 ### 1. Try the local demonstrations
 
-**Try a local demo** exercises a small static website. **Explore visual demo** produces a richer graph and gallery. **Try hybrid lab** exercises generated navigation, structured data, a lazy-loaded image, an open shadow root, a same-origin iframe, and a read-only endpoint. These are real loopback HTTP fixtures, not fabricated crawl records. The hybrid demonstration needs Chromium for its rendered results.
+**Home → Explore sample sites** (or **Examples** in a result workspace) opens the sample picker. **Try a local demo** exercises a small static website. **Explore visual demo** produces a richer graph and gallery. **Try hybrid lab** exercises generated navigation, structured data, a lazy-loaded image, an open shadow root, a same-origin iframe, and a read-only endpoint. These are real loopback HTTP fixtures, not fabricated crawl records. The hybrid demonstration needs Chromium for its rendered results.
 
 ### 2. Configure a crawl
 
@@ -165,7 +170,7 @@ The Atlas preserves the spiderweb, depth-ring and discovery-tree layouts, focus 
 The interactive view is bounded to **500 nodes / 8,000 edges**. The label shows displayed versus available nodes. Larger inventories remain searchable in tables and downloadable as complete graph JSON. The classic static report graph has a separate smaller cap.
 
 In Elements → Images, search URLs/alt/source, filter alt states, switch grid/list, and inspect variants and source pages. Thumbnails remain opt-in. Raster previews are served through the guarded local endpoint; remote SVG is never embedded. Browser-rendered pages can also expose measured image dimensions and observed response information. Merely declaring an image URL does not mean the file was fetched or verified.
-<img width="1600" height="1000" alt="image" src="https://github.com/user-attachments/assets/f1b35b67-a0d8-4072-9dfc-fa728600b9be" />
+
 
 ### 7. Define custom extraction
 
@@ -241,3 +246,12 @@ Linux CI installs Chromium system dependencies before browser tests and sets `RE
 The engine, renderer, extraction, analysis, evidence storage and UI workspaces are separated into modules. The browser interface remains local TypeScript without a required cloud backend. See [HYBRID.md](docs/HYBRID.md), [PERFORMANCE.md](docs/PERFORMANCE.md), [VALIDATION.md](docs/VALIDATION.md), and the [file inventory](docs/FILE-COMMENTS.md). These explain dependency choices, measured limits, and what is not implemented.
 
 License: [ISC](LICENSE). Originated as a Boot.dev TypeScript crawler project.
+
+<details>
+<summary>Earlier workspace previews</summary>
+
+<img width="1600" height="1370" alt="image" src="https://github.com/user-attachments/assets/78e7363a-81aa-4f14-a3f5-d5098b97fea7" />
+
+<img width="1600" height="1000" alt="image" src="https://github.com/user-attachments/assets/f1b35b67-a0d8-4072-9dfc-fa728600b9be" />
+
+</details>
