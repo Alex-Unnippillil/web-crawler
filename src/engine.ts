@@ -1,6 +1,7 @@
 // Repository note: Implements bounded crawl scheduling, fetching, retries, pacing, cancellation, and crawl lifecycle behavior.
 // Implements the bounded crawl engine, request scheduling, retries, redirects, and crawl lifecycle.
 
+import { challenge, canonicalTransition, diagnosticKind, redactMessage, describeError } from './crawler/diagnostics.js';
 import { gunzipSync } from 'node:zlib';
 import { BrowserPool, BrowserUnavailableError } from './crawler/browser.js';
 import { discoverSitemaps, robotsSitemaps } from './crawler/sitemap.js';
@@ -14,15 +15,11 @@ import { validateOptions } from './options.js';
 import type { CrawlHooks, CrawlOptions, CrawlResult, PageDetails } from './types.js';
 
 class CrawlError extends Error {
+  url?: string; stage?: 'page' | 'robots' | 'sitemap'; provider?: string; guidance?: string;
   constructor(message: string, readonly kind: string, readonly status?: number,
     readonly retryable = false, readonly retryAfterMs?: number) { super(message); }
 }
-function errorMessage(error: unknown): string {
-  if (!(error instanceof Error)) return String(error);
-  const code = 'code' in error ? String(error.code) : '';
-  const nested = error.cause ? `; ${errorMessage(error.cause)}` : '';
-  return `${error.message}${code ? ` [${code}]` : ''}${nested}`;
-}
+const errorMessage = describeError;
 function retryAfter(value: string | null): number | undefined {
   if (value === null) return undefined;
   if (/^\d+(\.\d+)?$/.test(value)) return Number(value) * 1000;
@@ -59,7 +56,7 @@ async function readBody(response: Response, maxBytes: number, compressed = false
 export async function runCrawl(startInput: string, input: Partial<CrawlOptions> = {}, hooks: CrawlHooks = {}): Promise<CrawlResult> {
   const options = validateOptions(input);
   const startURL = httpURL(startInput, undefined, options.stripTracking);
-  const origin = new URL(startURL).origin;
+  let origin = new URL(startURL).origin;
   if (!isInScope(startURL, origin, options.pathPrefix)) throw new Error('The start URL is outside pathPrefix.');
   const started = Date.now();
   const controller = new AbortController();
@@ -130,7 +127,7 @@ export async function runCrawl(startInput: string, input: Partial<CrawlOptions> 
     } finally { combined.removeEventListener('abort', cancel); }
   }
 
-  async function once(initial: string, kind: 'page' | 'robots' | 'sitemap'): Promise<{ text: string; bytes: number; url: string; status: number; headers: Headers; http: HttpInspection }> {
+  async function once(initial: string, kind: 'page' | 'robots' | 'sitemap', entry = false): Promise<{ text: string; bytes: number; url: string; status: number; headers: Headers; http: HttpInspection }> {
     const robots = kind === 'robots', sitemap = kind === 'sitemap';
     const detail: HttpInspection = { status_text: '', mime_type: '', charset: '', headers: {}, redirects: [], attempts: 0, ttfb_ms: 0 };
     let current = initial;
@@ -138,7 +135,7 @@ export async function runCrawl(startInput: string, input: Partial<CrawlOptions> 
     for (let hop = 0; hop <= 5; hop++) {
       if (redirects.has(current)) throw new CrawlError('Redirect loop detected.', 'redirect');
       redirects.add(current);
-      if (!isInScope(current, origin, robots || sitemap ? '' : options.pathPrefix)) throw new CrawlError('Redirect blocked: destination is outside the allowed origin/path.', 'scope');
+      if (!isInScope(current, origin, robots || sitemap ? '' : options.pathPrefix) && !(robots && canonicalTransition(initial, current)) && !(entry && current === initial && canonicalTransition(initial, origin))) throw new CrawlError('Redirect blocked: destination is outside the allowed origin/path.', 'scope');
       if (!robots && !policy.allows(current)) throw new CrawlError('robots.txt disallows this URL.', 'robots');
       await pace();
       const attemptController = new AbortController();
@@ -156,14 +153,43 @@ export async function runCrawl(startInput: string, input: Partial<CrawlOptions> 
         detail.status_text = response.statusText; detail.headers = inspectHeaders(response.headers);
         detail.mime_type = (response.headers.get('content-type') ?? '').split(';')[0]!;
         detail.charset = /charset=([^; ]+)/i.exec(response.headers.get('content-type') ?? '')?.[1] ?? '';
+        const block = challenge(response.headers, response.status);
+        if (block) {
+          await response.body?.cancel();
+          throw Object.assign(new CrawlError(block.message, block.kind, response.status), block, { url: current, stage: kind });
+        }
         if ([301, 302, 303, 307, 308].includes(response.status)) {
           const location = response.headers.get('location');
           await response.body?.cancel();
           if (!location) throw new CrawlError('Redirect has no Location header.', 'redirect', response.status);
           if (hop === 5) throw new CrawlError('More than five redirects.', 'redirect', response.status);
-          try { const to = httpURL(location, current, options.stripTracking); detail.redirects.push({ url: current, status: response.status, to }); current = to; }
-          catch (error) { throw new CrawlError(errorMessage(error), 'redirect'); }
+          try {
+            const to = httpURL(location, current, options.stripTracking);
+            if (entry && new URL(to).origin !== origin && canonicalTransition(current, to) && isInScope(to, new URL(to).origin, options.pathPrefix)) {
+              // Establish the destination policy BEFORE fetching any redirected page. Other crawl URLs cannot expand scope.
+              const previous = origin; origin = new URL(to).origin;
+              result.effective_start_url = to;
+              (result.scope_redirects ??= []).push({ from: current, to, status: response.status });
+              log(`canonical host: ${previous} → ${origin}; checking destination robots.txt`);
+              try { await establishRobots(); } catch (error) { controller.abort(error); throw error; }
+            }
+            detail.redirects.push({ url: current, status: response.status, to }); current = to;
+          }
+          catch (error) { if (error instanceof CrawlError) throw error; throw new CrawlError(errorMessage(error), 'redirect'); }
           continue;
+        }
+        if (!response.ok && (response.headers.get('content-type') ?? '').toLowerCase().includes('text/html')) {
+          // Limit diagnostic sampling independently of the normal page budget.
+          const reader = response.body?.getReader(); let sample = '';
+          if (reader) {
+            const chunks: Uint8Array[] = []; let size = 0;
+            try {
+              while (size < 16384) { const chunk = await reader.read(); if (chunk.done) break; const part = chunk.value.subarray(0, 16384 - size); chunks.push(part); size += part.length; }
+              sample = new TextDecoder().decode(Buffer.concat(chunks));
+            } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+          }
+          const detected = challenge(response.headers, response.status, sample);
+          if (detected) throw Object.assign(new CrawlError(detected.message, detected.kind, response.status), detected, { url: current, stage: kind });
         }
         if ((robots || sitemap) && response.status >= 400 && response.status < 500 && response.status !== 429) {
           await response.body?.cancel();
@@ -185,20 +211,20 @@ export async function runCrawl(startInput: string, input: Partial<CrawlOptions> 
         result.telemetry!.body_bytes += body.bytes;
         return { ...body, url: current, status: response.status, headers: response.headers, http: detail };
       } catch (error) {
-        if (error instanceof CrawlError) throw error;
-        if (controller.signal.aborted) throw new CrawlError(errorMessage(controller.signal.reason), 'aborted');
-        if (attemptController.signal.aborted) throw new CrawlError(errorMessage(attemptController.signal.reason), 'timeout', undefined, true);
+        if (error instanceof CrawlError) { error.url ??= current; error.stage ??= kind; throw error; }
+        if (controller.signal.aborted) throw Object.assign(new CrawlError(errorMessage(controller.signal.reason), 'aborted'), { url: current, stage: kind });
+        if (attemptController.signal.aborted) throw Object.assign(new CrawlError(errorMessage(attemptController.signal.reason), 'timeout', undefined, true), { url: current, stage: kind });
         const message = errorMessage(error);
-        throw new CrawlError(message, 'network', undefined, !/CERT_|CERTIFICATE|TLS|SSL/i.test(message));
+        throw Object.assign(new CrawlError(redactMessage(message), diagnosticKind(message), undefined, !/CERT_|CERTIFICATE|TLS|SSL|Private, loopback/i.test(message)), { url: current, stage: kind });
       } finally {
         clearTimeout(timeout); controller.signal.removeEventListener('abort', relay);
       }
     }
     throw new CrawlError('Redirect limit reached.', 'redirect');
   }
-  async function request(url: string, kind: 'page' | 'robots' | 'sitemap' = 'page') {
+  async function request(url: string, kind: 'page' | 'robots' | 'sitemap' = 'page', entry = false) {
     for (let attempt = 0; ; attempt++) {
-      try { const value = await once(url, kind); value.http.attempts = attempt + 1; return { ...value, attempts: attempt + 1 }; }
+      try { const value = await once(url, kind, entry); value.http.attempts = attempt + 1; return { ...value, attempts: attempt + 1 }; }
       catch (error) {
         const err = error instanceof CrawlError ? error : new CrawlError(errorMessage(error), controller.signal.aborted ? 'aborted' : 'internal');
         const delay = err.retryAfterMs ?? Math.min(options.maxRetryDelayMs, 250 * 2 ** attempt);
@@ -234,7 +260,7 @@ export async function runCrawl(startInput: string, input: Partial<CrawlOptions> 
   function recordError(url: string, error: unknown): void {
     const err = error instanceof CrawlError ? error : new CrawlError(errorMessage(error), 'internal');
     const attempts = 'attempts' in err && typeof err.attempts === 'number' ? err.attempts : 0;
-    result.errors.push({ url, kind: err.kind, message: err.message, attempts, ...(err.status === undefined ? {} : { status_code: err.status }) });
+    result.errors.push({ url: err.url ?? url, kind: err.kind, stage: err.stage, provider: err.provider, guidance: err.guidance, message: redactMessage(err.message), attempts, ...(err.status === undefined ? {} : { status_code: err.status }) });
     log(`${err.kind}: ${url}: ${err.message}`);
   }
   async function visit(item: FrontierEntry): Promise<void> {
@@ -243,7 +269,7 @@ export async function runCrawl(startInput: string, input: Partial<CrawlOptions> 
       log(`crawling: ${item.url}`);
       item.state = 'processing';
       result.telemetry!.http_active++;
-      const fetched = await request(item.url).finally(() => { result.telemetry!.http_active--; });
+      const fetched = await request(item.url, 'page', item.method === 'seed').finally(() => { result.telemetry!.http_active--; });
       if (result.pages[fetched.url]) { skip('redirect_duplicate'); item.state = 'completed'; return; }
       if (!extractor) {
         extractorPromise ??= import('./extract.js');
@@ -317,25 +343,39 @@ export async function runCrawl(startInput: string, input: Partial<CrawlOptions> 
       for (const url of captured.image_urls) uniqueImages.add(url);
       item.state = 'completed'; hooks.onPage?.(captured);
       for (const link of [...new Set([...links, ...rawData.outgoing_links])].slice(0, options.maxLinksPerPage)) enqueue(link, item.depth + 1, fetched.url);
-    } catch (error) { item.state = 'failed'; recordError(item.url, error); }
+    } catch (error) { item.state = 'failed'; recordError(item.url, error); if (error instanceof CrawlError && error.kind === 'access-challenge') controller.abort(error); }
     finally { progress(); }
   }
-  try {
-    if (!controller.signal.aborted && options.respectRobots) {
-      const robotsURL = new URL('/robots.txt', origin).href;
-      try {
-        const fetched = await request(robotsURL, 'robots');
-        Object.assign(result.discovery!.robots, { status: fetched.status, text: fetched.text.slice(0, 64000), sitemaps: robotsSitemaps(fetched.text, origin) });
-        if ([401, 403].includes(fetched.status)) {
-          policy = { allows: () => false, delayMs: 0 };
-          warn(`robots.txt returned ${fetched.status}; crawling denied conservatively.`);
-        } else if (fetched.status < 400) policy = parseRobots(fetched.text, options.userAgent);
-        nextRequest = Math.max(nextRequest, Date.now() + policy.delayMs);
-        if (policy.delayMs > 60000) throw new CrawlError('robots.txt Crawl-delay exceeds 60 seconds; refusing this run rather than ignoring the delay.', 'robots');
-      } catch (error) { result.discovery!.robots.error = errorMessage(error); recordError(robotsURL, error); controller.abort(new Error('Unable to establish robots.txt policy.')); }
+  async function establishRobots(): Promise<void> {
+    if (controller.signal.aborted || !options.respectRobots) return;
+    const robotsURL = new URL('/robots.txt', origin).href;
+    Object.assign(result.discovery!.robots, { url: robotsURL, status: null, text: '', sitemaps: [], error: undefined });
+    try {
+      const fetched = await request(robotsURL, 'robots');
+      Object.assign(result.discovery!.robots, { status: fetched.status, text: fetched.text.slice(0, 64000), sitemaps: robotsSitemaps(fetched.text, origin) });
+      policy = { allows: () => true, delayMs: 0 };
+      if ([401, 403].includes(fetched.status)) {
+        policy = { allows: () => false, delayMs: 0 };
+        warn(`robots.txt returned ${fetched.status}; crawling denied conservatively. Review site-owner access settings.`);
+      } else if (fetched.status < 400) {
+        if (/^\s*(?:<!doctype html|<html)/i.test(fetched.text)) throw Object.assign(new CrawlError('robots.txt returned an HTML page instead of robots rules. Check the site routing or owner access settings.', 'robots', fetched.status), { url: robotsURL, stage: 'robots' });
+        policy = parseRobots(fetched.text, options.userAgent);
+      }
+      nextRequest = Math.max(nextRequest, Date.now() + policy.delayMs);
+      if (policy.delayMs > 60000) throw new CrawlError('robots.txt Crawl-delay exceeds 60 seconds; refusing this run rather than ignoring the delay.', 'robots');
+    } catch (error) {
+      result.discovery!.robots.error = redactMessage(errorMessage(error));
+      if (error instanceof CrawlError) { result.discovery!.robots.status = error.status ?? null; error.stage ??= 'robots'; error.url ??= robotsURL; }
+      throw error;
     }
+  }
+  try {
+    try { await establishRobots(); }
+    catch (error) { recordError(new URL('/robots.txt', origin).href, error); controller.abort(error); }
     if (!options.respectRobots) warn('robots.txt checking was explicitly disabled. Crawl only with authorization.');
     enqueue(startURL, 0, '', 'seed');
+    // Resolve the entry origin before sitemap seeding can schedule the old hostname.
+    if (queue.length && !controller.signal.aborted) await visit(queue[queueIndex++]!);
     if (options.discoverSitemaps && !controller.signal.aborted) {
       const inventory = await discoverSitemaps(origin, [...result.discovery!.robots.sitemaps, ...options.sitemapURLs], url => request(url, 'sitemap'), controller.signal);
       result.discovery!.sitemaps = inventory.files; result.discovery!.sitemap_urls = inventory.urls; result.discovery!.truncated = inventory.truncated;

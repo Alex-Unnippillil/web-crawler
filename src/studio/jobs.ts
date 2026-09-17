@@ -15,7 +15,7 @@ import { startAtlasDemoSite } from './atlas-demo.js';
 import { startDemoSite } from './demo.js';
 import type { CrawlResult, CrawlOptions, CrawlHooks } from '../types.js';
 
-export type JobStatus = 'running' | 'paused' | 'stopping' | 'completed' | 'stopped' | 'failed' | 'interrupted';
+export type JobStatus = 'running' | 'paused' | 'stopping' | 'completed' | 'stopped' | 'failed' | 'interrupted' | 'blocked';
 export interface JobMeta {
   id: string; name: string; url: string; demo: boolean; status: JobStatus; createdAt: string;
   demoMode?: 'basic' | 'atlas' | 'hybrid';
@@ -135,7 +135,8 @@ export class Jobs {
         }),
       }).then(result => {
         job.result = result;
-        job.status = result.summary.stopped ? 'stopped' : result.summary.pages_crawled ? 'completed' : 'failed';
+        job.status = result.errors.some(e => e.kind === 'access-challenge') ? 'blocked' : !result.summary.pages_crawled && result.errors.length && job.status !== 'stopping' ? 'failed' : result.summary.stopped ? 'stopped' : result.summary.pages_crawled ? 'completed' : 'failed';
+        if (job.status === 'blocked') job.message = result.errors.find(e => e.kind === 'access-challenge')?.message;
         if (job.status === 'failed') job.message = result.errors[0]?.message ?? 'No HTML pages were collected. Check the URL, robots.txt policy and network connection.';
       }).catch(error => { job.status = 'failed'; job.message = error instanceof Error ? error.message : String(error); })
         .finally(async () => { localDemo?.close(); await evidence.close(); job.finishedAt = new Date().toISOString(); this.changed(job); this.save(job); await this.saves; });

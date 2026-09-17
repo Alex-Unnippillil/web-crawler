@@ -1,6 +1,7 @@
 // Repository note: Implements browser-side Studio interactions, views, filtering, history, controls, and exports.
 // Browser-side controller for Web Crawler Studio: forms, live progress, results, history, and exports.
 
+import { ConnectionUI } from './connection.js';
 import { Workbench } from './workbench.js';
 import { workbenchTabs, type WorkbenchTab } from './workbench-model.js';
 import { PageInspector } from './inspector.js';
@@ -53,10 +54,11 @@ const host = { openPage, notify: toast, api: (path: string) => api(path), naviga
 const workbench = new Workbench(host);
 const inspector = new PageInspector(host);
 const profiles = new Profiles($<HTMLFormElement>('crawl-form'), toast);
+const connectionUI = new ConnectionUI(api, showDialog, toast);
 const active = (j?: JobMeta) => !!j && ['running', 'paused', 'stopping'].includes(j.status);
 const fmt = (n: number) => n.toLocaleString();
 const duration = (ms: number) => ms < 60000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.floor(ms / 60000)}m ${Math.floor(ms % 60000 / 1000)}s`;
-const labelStatus = (j: JobMeta) => ({ completed: j.failures ? 'Completed with errors' : 'Completed', failed: 'Needs attention', paused: 'Paused', running: 'Crawling', stopped: 'Stopped', stopping: 'Stopping…', interrupted: 'Interrupted' })[j.status];
+const labelStatus = (j: JobMeta) => ({ completed: j.failures ? 'Completed with errors' : 'Completed', failed: 'Needs attention', paused: 'Paused', running: 'Crawling', stopped: 'Stopped', stopping: 'Stopping…', interrupted: 'Interrupted', blocked: 'Access needed' })[j.status];
 async function api(path: string, method = 'GET', data?: unknown): Promise<Response> {
   const response = await fetch(path, { method, headers: { 'X-Crawler-Token': token, ...(data === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
   if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.error ?? `Request failed (${response.status}).`); }
@@ -142,7 +144,7 @@ function renderCrawl(): void {
   $('metric-external').textContent = fmt(s?.unique_external_links ?? 0); $('metric-issues').textContent = fmt(allIssues.length);
   $('pages-count').textContent = String(s?.pages_crawled ?? 0); $('issues-count').textContent = String(allIssues.length);
   const latestURL = [...j.logs].reverse().find(l => l.includes('crawling: '))?.split('crawling: ')[1];
-  $('progress-message').textContent = j.status === 'running' ? `Crawling ${latestURL ?? j.url}` : j.status === 'paused' ? 'Paused. In-flight requests may finish; the run deadline still applies.' : j.status === 'stopping' ? 'Stopping requests and saving partial results…' : j.status === 'completed' ? 'Crawl finished. Your results are saved locally.' : j.status === 'failed' ? 'The crawl could not collect HTML pages.' : 'Partial results saved. Run again to start a new crawl.';
+  $('progress-message').textContent = j.status === 'running' ? `Crawling ${latestURL ?? j.url}` : j.status === 'paused' ? 'Paused. In-flight requests may finish; the run deadline still applies.' : j.status === 'stopping' ? 'Stopping requests and saving partial results…' : j.status === 'completed' ? 'Crawl finished. Your results are saved locally.' : j.status === 'blocked' ? 'The site requires owner-approved access. No challenge bypass was attempted.' : j.status === 'failed' ? 'The crawl could not collect HTML pages.' : 'Partial results saved. Run again to start a new crawl.';
   $('progress-numbers').textContent = `${fmt(s?.urls_scheduled ?? 0)} / ${fmt(j.options.maxPages)} URL budget`;
   const progress = $<HTMLProgressElement>('crawl-progress'); progress.max = j.options.maxPages; progress.value = s?.urls_scheduled ?? 0;
   const skipped = Object.values(r?.skipped ?? {}).reduce((a, b) => a + b, 0);
@@ -153,6 +155,17 @@ function renderCrawl(): void {
   if (r?.skipped.depth_limit || r?.skipped.query_limit) notice.push('Some URLs were excluded by depth or query-variant limits.');
   if (r?.warnings.length) notice.push(...r.warnings.slice(0, 3));
   $('job-notice').hidden = !notice.length; $('job-notice').textContent = [...new Set(notice)].join(' ');
+  const failure = r?.errors.find(e => e.kind === 'access-challenge') ?? (!s?.pages_crawled ? r?.errors[0] : undefined);
+  const needsAccess = j.status === 'blocked';
+  $('connection-action-card').hidden = !failure;
+  if (failure) {
+    if (!s?.pages_crawled) $('job-notice').hidden = true;
+    $('connection-action-title').textContent = needsAccess ? 'Your site needs to authorize this crawler.' : 'Let’s find out what stopped this crawl.';
+    $('connection-action-message').textContent = `${failure.stage ? failure.stage + ': ' : ''}${failure.message}`;
+    $('connection-action-guidance').textContent = failure.guidance ?? 'Check the connection to see the request stage and next step. Completed results are kept.';
+  }
+  $('crawl-telemetry').hidden = !!failure && !s?.pages_crawled;
+  document.querySelector<HTMLElement>('#crawl-section > .metrics')!.hidden = !!failure && !s?.pages_crawled;
   renderTelemetry($('crawl-telemetry'), j);
   updateElapsed(); renderResults();
 }
@@ -306,7 +319,7 @@ document.addEventListener('click', e => {
     if (el.dataset.close) { closeDialog(el.dataset.close); return; }
     if (el.dataset.job) { await chooseJob(el.dataset.job); return; }
     if (el.dataset.page) { if ($<HTMLDialogElement>('command-dialog').open) closeDialog('command-dialog'); openPage(el.dataset.page); return; }
-    if (el.dataset.tab) { setTab(el.dataset.tab as Tab); return; }
+    if (el.dataset.tab) { showView('workspace'); setTab(el.dataset.tab as Tab); return; }
     if (el.dataset.view) { showView(el.dataset.view as typeof view); return; }
     if (el.dataset.export) { await download(el.dataset.export); return; }
     if (el.dataset.copy) { try { await navigator.clipboard.writeText(el.dataset.copy); toast('URL copied.'); } catch { toast('Clipboard unavailable. Select and copy the URL above.'); } return; }
@@ -315,6 +328,10 @@ document.addEventListener('click', e => {
       confirm('Delete this crawl?', 'This permanently removes its saved results from this computer. Export anything you need first.', async () => { await api(`/api/jobs/${id}`, 'DELETE'); if (selectedID === id) { selectedID = ''; selected = undefined; etag = ''; renderCrawl(); } await poll(); toast('Crawl deleted.'); }); return;
     }
     switch (el.dataset.action) {
+      case 'check-connection': connectionUI.open(selected?.url ?? ''); break;
+      case 'check-form': connectionUI.open($<HTMLInputElement>('url-input').value); break;
+      case 'owner-access': connectionUI.openAccess(selected?.url ?? $<HTMLInputElement>('url-input').value); break;
+      case 'glass': { const opaque = document.documentElement.dataset.transparency !== 'reduce'; document.documentElement.dataset.transparency = opaque ? 'reduce' : 'normal'; $('glass-label').textContent = opaque ? 'Enable glass effects' : 'Reduce transparency'; try { localStorage.setItem('crawler-transparency', opaque ? 'reduce' : 'normal'); } catch {} break; }
       case 'new': showNew(); break; case 'help': showDialog('help-dialog'); break; case 'theme': theme(true); break;
       case 'demo': await startCrawl(true); break;
       case 'hybrid-demo': await startCrawl(true, false, true); break;
@@ -339,10 +356,19 @@ document.querySelectorAll<HTMLInputElement>('[name="preset"]').forEach(radio => 
 ($<HTMLFormElement>('crawl-form').elements.namedItem('maxPages') as HTMLInputElement).addEventListener('input', e => { document.querySelectorAll<HTMLInputElement>('[name="preset"]').forEach(r => { r.checked = r.value === (e.target as HTMLInputElement).value; }); });
 $('search').addEventListener('input', () => { query = $<HTMLInputElement>('search').value.trim().toLowerCase(); pageIndex = 0; renderResults(); });
 for (const id of ['page-filter', 'sort']) $(id).addEventListener('change', () => { pageIndex = 0; renderResults(); });
-document.querySelector('[role="tablist"]')!.addEventListener('keydown', event => {
-  const e = event as KeyboardEvent; if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) return;
+const tabList = document.querySelector<HTMLElement>('.result-tabs')!;
+const tabAnchor = document.createComment('Narrow-screen analysis navigation'); tabList.before(tabAnchor);
+const navigationQuery = matchMedia('(min-width: 901px)');
+function placeNavigation(): void {
+  if (navigationQuery.matches) $('workspace-navigation').append(tabList); else tabAnchor.after(tabList);
+  tabList.setAttribute('aria-orientation', navigationQuery.matches ? 'vertical' : 'horizontal');
+}
+placeNavigation(); navigationQuery.addEventListener('change', placeNavigation);
+try { if (localStorage.getItem('crawler-transparency') === 'reduce') { document.documentElement.dataset.transparency = 'reduce'; $('glass-label').textContent = 'Enable glass effects'; } } catch {}
+tabList.addEventListener('keydown', event => {
+  const e = event as KeyboardEvent; if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
   e.preventDefault(); const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.result-tabs [data-tab]')).map(el => el.dataset.tab as Tab); const index = tabs.indexOf(tab);
-  const next = e.key === 'Home' ? tabs[0]! : e.key === 'End' ? tabs[tabs.length - 1]! : tabs[(index + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]!;
+  const next = e.key === 'Home' ? tabs[0]! : e.key === 'End' ? tabs[tabs.length - 1]! : tabs[(index + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : tabs.length - 1)) % tabs.length]!;
   setTab(next); $(`tab-${next}`).focus();
 });
 document.addEventListener('keydown', e => {

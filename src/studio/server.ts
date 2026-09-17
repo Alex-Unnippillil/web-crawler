@@ -9,6 +9,9 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { browserAvailability } from '../crawler/browser.js';
+import { OwnerAccess } from './owner-access.js';
+import { checkConnection } from './connection.js';
+import { publicFetch } from './network.js';
 import { MediaPreviews } from './media.js';
 import { Jobs } from './jobs.js';
 import { renderCSV, renderHTML, renderGraph } from '../report.js';
@@ -43,9 +46,12 @@ function openBrowser(url: string): void {
 }
 export async function startStudio(config: { port?: number; directory?: string; open?: boolean; hooks?: CrawlHooks; assets?: string } = {}) {
   const media = new MediaPreviews();
+  const access = new OwnerAccess();
+  const guardedFetch = access.wrap(config.hooks?.fetchImpl ?? publicFetch);
+  let probing: AbortController | undefined;
   let browserState = await browserAvailability();
   const token = randomBytes(32).toString('hex');
-  const store = new Jobs(config.directory ?? process.env.CRAWLER_DATA_DIR ?? join(homedir(), '.web-crawler-studio'), config.hooks);
+  const store = new Jobs(config.directory ?? process.env.CRAWLER_DATA_DIR ?? join(homedir(), '.web-crawler-studio'), { ...config.hooks, fetchImpl: guardedFetch });
   await store.init();
   let port = config.port ?? 4310;
   let shutdown = false;
@@ -63,8 +69,27 @@ export async function startStudio(config: { port?: number; directory?: string; o
         const received = Buffer.from(String(req.headers['x-crawler-token'] ?? ''));
         const secret = Buffer.from(token);
         if (received.length !== secret.length || !timingSafeEqual(received, secret)) { send(res, 403, { error: 'Session expired. Refresh this page.' }); return; }
-        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.1.0', browser: browserState }); return; }
-        if (url.pathname === '/api/jobs' && req.method === 'POST') { send(res, 201, await store.start(await body(req))); return; }
+        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.2.0', browser: browserState }); return; }
+        if (url.pathname === '/api/access' && req.method === 'GET') { send(res, 200, access.state()); return; }
+        if (url.pathname === '/api/access' && ['POST', 'DELETE'].includes(req.method ?? '')) {
+          if (store.busy() || probing) { send(res, 409, { error: 'Stop the active crawl or connection check before changing owner access.' }); return; }
+          const value = req.method === 'POST' ? await body(req) : undefined;
+          if (store.busy() || probing) { send(res, 409, { error: 'Wait for the active operation before changing owner access.' }); return; }
+          if (req.method === 'DELETE') access.clear(); else access.configure(value);
+          send(res, 200, access.state()); return;
+        }
+        if (url.pathname === '/api/connection' && req.method === 'POST') {
+          if (store.busy() || probing) { send(res, 409, { error: 'A crawl or connection check is already active.' }); return; }
+          const value = await body(req) as { url?: unknown };
+          // Recheck after reading the asynchronous body to prevent concurrent probes.
+          if (store.busy() || probing) { send(res, 409, { error: 'A crawl or connection check is already active.' }); return; }
+          probing = new AbortController(); const cancel = () => probing?.abort(new Error('Connection check cancelled.'));
+          res.once('close', cancel);
+          try { send(res, 200, await checkConnection(value?.url, guardedFetch, probing.signal)); }
+          finally { res.removeListener('close', cancel); probing = undefined; }
+          return;
+        }
+        if (url.pathname === '/api/jobs' && req.method === 'POST') { if (probing) { send(res, 409, { error: 'Wait for the connection check to finish.' }); return; } const value = await body(req); if (probing) { send(res, 409, { error: 'Wait for the connection check to finish.' }); return; } send(res, 201, await store.start(value)); return; }
         if (url.pathname === '/api/browser' && req.method === 'GET') { browserState = await browserAvailability(); send(res, 200, browserState); return; }
         const match = /^\/api\/jobs\/([a-f0-9-]{36})(?:\/(pause|resume|stop|export|image|evidence))?$/.exec(url.pathname);
         if (match) {
@@ -89,7 +114,7 @@ export async function startStudio(config: { port?: number; directory?: string; o
           }
           if (action === 'image' && req.method === 'GET') {
             const job = await store.get(id);
-            const image = await media.load(job, url.searchParams.get('url') ?? '');
+            const image = await media.load(job, url.searchParams.get('url') ?? '', guardedFetch);
             res.writeHead(200, { 'Content-Type': image.type, 'Content-Length': image.bytes.length });
             res.end(image.bytes); return;
           }
@@ -128,6 +153,8 @@ export async function startStudio(config: { port?: number; directory?: string; o
         '/inspector.js': ['ui-dist/inspector.js', 'text/javascript'],
         '/profiles.js': ['ui-dist/profiles.js', 'text/javascript'],
         '/telemetry.js': ['ui-dist/telemetry.js', 'text/javascript'],
+        '/connection.js': ['ui-dist/connection.js', 'text/javascript'],
+        '/glass.css': ['ui/glass.css', 'text/css'],
         '/workbench.css': ['ui/workbench.css', 'text/css'],
         '/atlas.css': ['ui/atlas.css', 'text/css'],
       };
@@ -151,6 +178,7 @@ export async function startStudio(config: { port?: number; directory?: string; o
   const address = `http://localhost:${port}`;
   const close = async () => {
     if (shutdown) return; shutdown = true;
+    probing?.abort(new Error('Application closed.')); access.clear();
     await store.close(); server.closeAllConnections(); await new Promise<void>(resolveClose => server.close(() => resolveClose()));
   };
   if (config.open) openBrowser(address);
