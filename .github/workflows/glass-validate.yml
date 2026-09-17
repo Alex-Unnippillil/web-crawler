@@ -1,0 +1,84 @@
+# Temporary engineering-only transport; never included in the product branch.
+name: Validate Glass Workbench candidate
+on:
+  push:
+    branches: [upgrade/glass-engineering-20260917]
+    paths: [.github/workflows/glass-validate.yml]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REQUIRE_BROWSER: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Apply reviewed, byte-verified commits to the unchanged product base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse origin/main)" = '864eb5e87b1f64ab419be523a03f24af7a957361'
+          git checkout -b glass-product 864eb5e87b1f64ab419be523a03f24af7a957361
+          git config user.name 'Alex Unnippillil'
+          git config user.email 'alex.unnippillil@hotmail.com'
+          python3 - <<'PY'
+          import urllib.request, os, base64, json, lzma, hashlib
+          from pathlib import Path
+          shas = ['f099634c2c464baafd7bc656a1a5585b206b70df','c33ba2c45ecd36c16d1021103ccac281149a45a1','027a748735f84c9d2022c4528aa55decff008d88','ff6b29964148cc4064fad1721c5919374ecf1542','297505d076daa2d6ebb2e23c320a09027472251b','623e99eb55d3c415a1bbc06d36159ac61df61795','c24360b434b2905d0fd4ce2f6fe5505239658a14','9d1d15b6392fe2cd0a9014a1d9f1fa701b4423a5']
+          chunks=[]
+          for sha in shas:
+              request=urllib.request.Request('https://api.github.com/repos/Alex-Unnippillil/web-crawler/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(request,timeout=30) as response: blob=json.load(response)
+              chunks.append(base64.b64decode(blob['content']))
+          patch=lzma.decompress(b''.join(chunks))
+          assert hashlib.sha256(patch).hexdigest()=='0496cd4e90d00fa9af8c1fb51a6b35869a0762058072603f87f9485cac5b520e'
+          Path(os.environ['RUNNER_TEMP'],'glass-series.patch').write_bytes(patch)
+          PY
+          git am "$RUNNER_TEMP/glass-series.patch"
+      - name: Install locked dependencies and sandboxed Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          bash .github/prepare-browser-ci.sh
+          python3 -m pip install playwright==1.63.0
+      - name: Full application, browser, owner-access and scale verification
+        run: |
+          set -o pipefail
+          npm run check | tee "$RUNNER_TEMP/check.log"
+          npm run demo
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          python3 tests/e2e.py
+          python3 tests/hybrid_e2e.py
+          python3 tests/glass_e2e.py
+          node tests/scale.mjs 1000 > "$RUNNER_TEMP/glass-scale.json"
+      - name: Diagnose the owner-authorized public website without circumventing its access policy
+        run: |
+          node --input-type=module <<'JS' > "$RUNNER_TEMP/website-connection.json"
+          import { checkConnection } from './dist/studio/connection.js';
+          import { publicFetch } from './dist/studio/network.js';
+          const report = await checkConnection('https://unnippillil.com/', publicFetch);
+          console.log(JSON.stringify({checked_at:new Date().toISOString(),credential_supplied:false,...report}, null, 2));
+          JS
+          cat "$RUNNER_TEMP/website-connection.json"
+      - name: Commit actual screenshots and push only a new feature branch
+        run: |
+          git add docs/glass-*.png
+          git diff --cached --check
+          git commit -m 'docs: capture verified glass workspace'
+          git push origin HEAD:refs/heads/upgrade/glass-workbench-20260917
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: glass-validation
+          path: |
+            docs/glass-*.png
+            ${{ runner.temp }}/check.log
+            ${{ runner.temp }}/glass-scale.json
+            ${{ runner.temp }}/website-connection.json
+          retention-days: 7
