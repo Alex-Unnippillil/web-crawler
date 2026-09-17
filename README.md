@@ -1,12 +1,15 @@
 <!-- Repository note: Setup, daily operation, downloads, and limits for Web Crawler Studio. -->
 # Web Crawler Studio
-### Hybrid Workbench 4.1.0
 
 **A local-first TypeScript crawler for HTML and JavaScript websites.**
 
 [Download](https://github.com/Alex-Unnippillil/web-crawler/releases/latest) · [Getting started](#getting-started) · [Using the app](#using-the-app) · [Hybrid architecture](docs/HYBRID.md) · [Security](SECURITY.md)
 
 ![JavaScript analysis in the running application](docs/hybrid-javascript.png)
+<img width="1600" height="1370" alt="image" src="https://github.com/user-attachments/assets/78e7363a-81aa-4f14-a3f5-d5098b97fea7" />
+<img width="1600" height="1000" alt="image" src="https://github.com/user-attachments/assets/f1b35b67-a0d8-4072-9dfc-fa728600b9be" />
+
+
 
 Enter a URL, choose a crawl mode, and explore pages, links, images, resources, structured data, and site architecture. Smart mode uses lightweight HTTP first and escalates sparse application shells to a reusable Chromium browser only when needed. No cloud account, API key, hosted database, or subscription is required.
 
