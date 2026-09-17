@@ -5,9 +5,9 @@
 
 [Download](https://github.com/Alex-Unnippillil/web-crawler/releases/latest) · [Getting started](#getting-started) · [Using the app](#using-the-app) · [Hybrid architecture](docs/HYBRID.md) · [Security](SECURITY.md)
 
-![JavaScript analysis in the running application](docs/hybrid-javascript.png)
+
 <img width="1600" height="1370" alt="image" src="https://github.com/user-attachments/assets/78e7363a-81aa-4f14-a3f5-d5098b97fea7" />
-<img width="1600" height="1000" alt="image" src="https://github.com/user-attachments/assets/f1b35b67-a0d8-4072-9dfc-fa728600b9be" />
+
 
 
 
@@ -93,7 +93,7 @@ npm run gui
 ```
 
 ## Using the app
-
+![JavaScript analysis in the running application](docs/hybrid-javascript.png)
 ### 1. Try the local demonstrations
 
 **Try a local demo** exercises a small static website. **Explore visual demo** produces a richer graph and gallery. **Try hybrid lab** exercises generated navigation, structured data, a lazy-loaded image, an open shadow root, a same-origin iframe, and a read-only endpoint. These are real loopback HTTP fixtures, not fabricated crawl records. The hybrid demonstration needs Chromium for its rendered results.
@@ -155,6 +155,7 @@ The Atlas preserves the spiderweb, depth-ring and discovery-tree layouts, focus 
 The interactive view is bounded to **500 nodes / 8,000 edges**. The label shows displayed versus available nodes. Larger inventories remain searchable in tables and downloadable as complete graph JSON. The classic static report graph has a separate smaller cap.
 
 In Elements → Images, search URLs/alt/source, filter alt states, switch grid/list, and inspect variants and source pages. Thumbnails remain opt-in. Raster previews are served through the guarded local endpoint; remote SVG is never embedded. Browser-rendered pages can also expose measured image dimensions and observed response information. Merely declaring an image URL does not mean the file was fetched or verified.
+<img width="1600" height="1000" alt="image" src="https://github.com/user-attachments/assets/f1b35b67-a0d8-4072-9dfc-fa728600b9be" />
 
 ### 7. Define custom extraction
 
