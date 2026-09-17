@@ -41,6 +41,14 @@ jobs:
           Path(os.environ['RUNNER_TEMP'],'glass-series.patch').write_bytes(patch)
           PY
           git am "$RUNNER_TEMP/glass-series.patch"
+          # The Actions token cannot publish workflow edits. Preserve the first
+          # product commit and reconstruct the second without those two files.
+          # Authorized workflow edits are published separately through the connector.
+          git diff --binary HEAD~1 HEAD -- . ':(exclude).github/workflows/ci.yml' ':(exclude).github/workflows/release.yml' > "$RUNNER_TEMP/release-product.patch"
+          git checkout -b glass-publish HEAD~1
+          git apply --index "$RUNNER_TEMP/release-product.patch"
+          git commit -m 'release: document and validate Glass Workbench 4.2.0'
+          test -z "$(git diff 864eb5e87b1f64ab419be523a03f24af7a957361 HEAD -- .github/workflows)"
       - name: Install locked dependencies and sandboxed Chromium
         run: |
           npm ci
