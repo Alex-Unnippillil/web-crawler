@@ -26,8 +26,6 @@ The glass-inspired interface replaces duplicate desktop navigation with one side
 
 ![Glass workspace on an owner-authorized test fixture](docs/glass-workspace.png)
 
-[Connect your own Vercel site and understand the diagnostics](docs/CONNECTIONS.md). **Never paste an automation secret into GitHub or chat.** Enter it only in the local app's Owner access dialog. Screenshots use controlled local test fixtures, not a claimed live crawl of unnippillil.com.
-
 ## What is new
 
 - **Three crawl modes:** Fast HTTP, Smart Hybrid, and Full Browser, with a processing-method label and escalation reason for every page.
