@@ -36,6 +36,17 @@ jobs:
           git apply "$RUNNER_TEMP/observatory.patch"
           git apply --check maintenance/observatory-fixes.patch
           git apply maintenance/observatory-fixes.patch
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/observatory_e2e.py')
+          text = path.read_text()
+          for theme in ('dark', 'light'):
+              old = f"page.get_by_role('button',name='Switch to {theme} mode').click()"
+              new = f"page.locator('#settings-dialog').get_by_role('button',name='Switch to {theme} mode',exact=True).click()"
+              assert text.count(old) == 1
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
           git diff --check
       - run: npm ci
       - name: Typecheck, build and new parser/model/DOM regression tests
