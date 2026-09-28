@@ -1,0 +1,84 @@
+--- a/ui/observatory.ts
++++ b/ui/observatory.ts
+@@ -55,4 +55,5 @@
+       this.leave(); this.target = target; this.mount(target);
+     }
++    if (different) this.syncFilters();
+     if (changed || !target.querySelector('#obs-charts')?.childElementCount) { this.charts(); this.lists(); }
+   }
+@@ -105,4 +106,8 @@
+   }
+   private control<T extends HTMLElement = HTMLElement>(id: string): T { return this.target!.querySelector<T>(`#${id}`)!; }
++  private syncFilters(): void {
++    const values: Record<string, string> = { 'obs-query': this.filter.query ?? '', 'obs-category': this.filter.category ?? 'all', 'obs-severity': this.filter.severity ?? 'all', 'obs-order': this.filter.order ?? 'severity' };
++    for (const [id, value] of Object.entries(values)) this.control<HTMLInputElement | HTMLSelectElement>(id).value = value;
++  }
+   private charts(): void {
+     const m = this.model;
+@@ -110,4 +115,7 @@
+     this.control('obs-scope').textContent = `${fmt(m.inspected)} of ${fmt(m.pages)} pages have static accessibility snapshots (${fmt(m.partial)} partial). ${fmt(m.fingerprinted)} have complete body-text fingerprints. These checks are not a WCAG audit or SEO score.`;
+     const charts = this.control('obs-charts'); const open = new Set(Array.from(charts.querySelectorAll<HTMLDetailsElement>('details[open]')).map(d => d.id));
++    const focused = charts.contains(document.activeElement) ? document.activeElement as HTMLElement : undefined;
++    const focusDetails = focused?.closest('details')?.id;
++    const focusSummary = focused?.tagName === 'SUMMARY';
+     charts.innerHTML = `<section class="obs-card" aria-labelledby="obs-coverage-heading"><div class="obs-card-head"><div><p class="obs-kicker">01 / COVERAGE</p><h3 id="obs-coverage-heading">The shape of your capture</h3></div><span class="obs-chart-kind">Radar</span></div><p class="obs-note">Presence, not quality. Unknown axes are N/A, never a passing score.</p>${radar(m)}</section>
+       <section class="obs-card" aria-labelledby="obs-outcome-heading"><div class="obs-card-head"><div><p class="obs-kicker">02 / RESPONSES</p><h3 id="obs-outcome-heading">What came back</h3></div><span class="obs-chart-kind">Horizontal bars</span></div><p class="obs-note">Final observed outcomes. Unvisited URLs are not failures.</p>${horizontal(m.outcomes)}</section>
+@@ -115,4 +123,5 @@
+       <section class="obs-card" aria-labelledby="obs-depth-heading"><div class="obs-card-head"><div><p class="obs-kicker">04 / DISCOVERY</p><h3 id="obs-depth-heading">Patterns below the surface</h3></div><span class="obs-chart-kind">Stacked bars</span></div><p class="obs-note">Captured pages grouped by discovery depth, with / without findings.</p>${depth(m)}</section>`;
+     charts.querySelectorAll<HTMLDetailsElement>('.obs-data').forEach(d => { d.open = open.has(d.id) || document.documentElement.dataset.chartTables === 'true'; });
++    if (focusDetails) charts.querySelector<HTMLElement>(`#${CSS.escape(focusDetails)} ${focusSummary ? 'summary' : '.obs-table-scroll'}`)?.focus({ preventScroll: true });
+   }
+   private lists(): void { this.findings(); this.pages(); }
+@@ -129,5 +138,11 @@
+   private pages(): void {
+     const rows = rankPages(this.model.metrics, this.ranking); const total = Math.max(1, Math.ceil(rows.length / 20)); this.rankingPage = Math.max(0, Math.min(this.rankingPage, total - 1));
+-    this.control('obs-ranking-list').innerHTML = `<div class="obs-table-scroll" tabindex="0" role="region" aria-label="Page priorities"><table><caption>Every captured page, ranked by ${esc(this.ranking === 'duration' ? 'visit duration' : this.ranking === 'incoming' ? 'distinct linking pages' : 'finding count')}. Unknown measurements sort last.</caption><thead><tr><th scope="col">Page</th><th scope="col">Visit</th><th scope="col">Words</th><th scope="col">Linking pages</th><th scope="col">Findings</th></tr></thead><tbody>${rows.slice(this.rankingPage * 20, (this.rankingPage + 1) * 20).map(p => `<tr><th scope="row"><button class="obs-url" data-obs-page="${esc(p.url)}">${esc(p.title || p.url)}</button><small>${esc(p.url)}</small></th><td>${ms(p.duration)}</td><td>${p.words === null ? 'N/A' : fmt(p.words)}</td><td>${fmt(p.incoming)}</td><td>${fmt(p.findings)}</td></tr>`).join('') || '<tr><td colspan="5">No captured pages yet.</td></tr>'}</tbody></table></div>`;
++    const target = this.control('obs-ranking-list');
++    const focused = target.contains(document.activeElement) ? document.activeElement as HTMLElement : undefined;
++    const focusURL = focused?.dataset.obsPage;
++    const scrollLeft = target.querySelector('.obs-table-scroll')?.scrollLeft ?? 0;
++    target.innerHTML = `<div class="obs-table-scroll" tabindex="0" role="region" aria-label="Page priorities"><table><caption>Every captured page, ranked by ${esc(this.ranking === 'duration' ? 'visit duration' : this.ranking === 'incoming' ? 'distinct linking pages' : 'finding count')}. Unknown measurements sort last.</caption><thead><tr><th scope="col">Page</th><th scope="col">Visit</th><th scope="col">Words</th><th scope="col">Linking pages</th><th scope="col">Findings</th></tr></thead><tbody>${rows.slice(this.rankingPage * 20, (this.rankingPage + 1) * 20).map(p => `<tr><th scope="row"><button class="obs-url" data-obs-page="${esc(p.url)}">${esc(p.title || p.url)}</button><small>${esc(p.url)}</small></th><td>${ms(p.duration)}</td><td>${p.words === null ? 'N/A' : fmt(p.words)}</td><td>${fmt(p.incoming)}</td><td>${fmt(p.findings)}</td></tr>`).join('') || '<tr><td colspan="5">No captured pages yet.</td></tr>'}</tbody></table></div>`;
++    const region = target.querySelector<HTMLElement>('.obs-table-scroll')!; region.scrollLeft = scrollLeft;
++    if (focused) (focusURL ? target.querySelector<HTMLElement>(`[data-obs-page="${CSS.escape(focusURL)}"]`) ?? region : region).focus({ preventScroll: true });
+     this.control('obs-ranking-count').textContent = `Page ${this.rankingPage + 1} of ${total} · ${fmt(rows.length)} pages`;
+     this.control<HTMLButtonElement>('obs-rank-previous').disabled = this.rankingPage === 0; this.control<HTMLButtonElement>('obs-rank-next').disabled = this.rankingPage === total - 1;
+--- a/ui/observatory-model.ts
++++ b/ui/observatory-model.ts
+@@ -17,4 +17,5 @@
+ const key = (url: string): string => { try { const value = new URL(url); value.hash = ''; return value.href; } catch { return url; } };
+ export function percentile(values: readonly number[], fraction: number): number | null {
++  if (!Number.isFinite(fraction)) return null;
+   const sorted = values.filter(v => number(v) !== null).sort((a, b) => a - b);
+   if (!sorted.length) return null;
+@@ -27,5 +28,6 @@
+   const titles = new Map<string, CrawledPage[]>(), hashes = new Map<string, CrawledPage[]>();
+   const incoming = new Map<string, number>(), captured = new Set<string>();
+-  for (const p of pages) { captured.add(key(p.url)); if (p.requested_url) captured.add(key(p.requested_url)); }
++  const aliases = new Map<string, string>();
++  for (const p of pages) { const final = key(p.url); captured.add(final); aliases.set(final, final); if (p.requested_url) { const requested = key(p.requested_url); captured.add(requested); aliases.set(requested, final); } }
+   const failed = new Map<string, number>();
+   for (const e of result?.errors ?? []) if ((!e.stage || e.stage === 'page') && (e.status_code ?? 0) >= 400 && (e.status_code ?? 0) <= 599 && !captured.has(key(e.url))) failed.set(key(e.url), e.status_code!);
+@@ -58,5 +60,5 @@
+     if (p.rendering?.failure) add(p, 'review', 'Capture', 'Rendering incomplete', p.rendering.failure);
+     let failures = 0; const targets: string[] = [];
+-    for (const url of new Set((p.internal_links ?? []).map(key))) {
++    for (const url of new Set((p.internal_links ?? []).map(url => aliases.get(key(url)) ?? key(url)))) {
+       incoming.set(url, (incoming.get(url) ?? 0) + 1);
+       const status = failed.get(url);
+--- a/tests/observatory-model.test.mjs
++++ b/tests/observatory-model.test.mjs
+@@ -24,2 +24,5 @@
+ test('preference values are strictly allowlisted with safe defaults', () => { assert.deepEqual(accessPreferences({text:'extra',contrast:true,motion:'true',tables:1,token:'private'}),{text:'extra',contrast:true,motion:false,tables:false}); assert.equal(accessPreferences({text:'999px'}).text,'normal'); assert.equal(accessPreferences(null).contrast,false); });
+ test('CSV export neutralizes formula-leading captured strings and quotes', () => { const text=csv([{url:'https://fixture.example',title:' =HYPERLINK("bad")',detail:'<script>not markup</script>'}]); assert.match(text,/"' =HYPERLINK\(""bad""\)"/); assert.match(text,/<script>not markup<\/script>/); });
++
++test('redirect aliases count each source only once against the captured destination', () => { const target = page('final', { requested_url: 'https://fixture.example/old' }); const source = page('source', { internal_links: ['https://fixture.example/old#x', 'https://fixture.example/final', 'https://fixture.example/old'] }); const m = analyzeCrawl(result([target, source])); assert.equal(m.metrics.find(p => p.title === 'final').incoming, 1); });
++test('invalid percentile fractions remain unknown', () => { assert.equal(percentile([10,20],NaN),null); assert.equal(percentile([10,20],Infinity),null); });
+--- a/tests/observatory_e2e.py
++++ b/tests/observatory_e2e.py
+@@ -80,5 +80,5 @@
+             page.locator('#obs-severity').select_option('review')
+             assert page.locator('.obs-evidence>li').count() > 0
+-            assert all('Accessibility' in t for t in page.locator('.obs-evidence>li').all_inner_texts())
++            assert all('Accessibility' in t for t in page.locator('.obs-evidence>li .obs-category').all_text_contents())
+             with page.expect_download() as download:
+                 page.locator('#obs-export-findings').click()
