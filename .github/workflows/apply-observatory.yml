@@ -47,6 +47,7 @@ jobs:
               text = text.replace(old, new)
           path.write_text(text)
           PY
+          python3 maintenance/refine_observatory.py
           git diff --check
       - run: npm ci
       - name: Typecheck, build and new parser/model/DOM regression tests
@@ -79,7 +80,7 @@ jobs:
       - name: Commit validated source and screenshots to the feature branch only
         shell: bash
         run: |
-          git rm maintenance/observatory-0.b64 maintenance/observatory-1.b64 maintenance/observatory-2.b64 maintenance/observatory-3.b64 maintenance/observatory-4.b64 maintenance/observatory-fixes.patch .github/workflows/apply-observatory.yml
+          git rm maintenance/observatory-0.b64 maintenance/observatory-1.b64 maintenance/observatory-2.b64 maintenance/observatory-3.b64 maintenance/observatory-4.b64 maintenance/observatory-fixes.patch maintenance/refine_observatory.py .github/workflows/apply-observatory.yml
           git add -A
           git diff --cached --check
           git config user.name 'github-actions[bot]'
