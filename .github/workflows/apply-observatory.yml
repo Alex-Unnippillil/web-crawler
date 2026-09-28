@@ -1,0 +1,75 @@
+name: Assemble Observatory candidate
+on:
+  push:
+    branches: ['studio/observatory-accessibility']
+    paths: ['.github/workflows/apply-observatory.yml']
+permissions:
+  contents: write
+concurrency:
+  group: assemble-observatory
+  cancel-in-progress: true
+jobs:
+  assemble:
+    if: github.repository == 'Alex-Unnippillil/web-crawler' && github.ref == 'refs/heads/studio/observatory-accessibility'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: studio/observatory-accessibility
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Verify complete source patch before applying
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, lzma, os
+          from pathlib import Path
+          payload = ''.join(Path(f'maintenance/observatory-{i}.b64').read_text().strip() for i in range(5))
+          patch = lzma.decompress(base64.b64decode(payload, validate=True))
+          assert hashlib.sha256(patch).hexdigest() == '8affb3a148e8a8b82150465dc0738c6217f27b670e11d5ed86c1190afce977f6', 'Source integrity mismatch'
+          Path(os.environ['RUNNER_TEMP'], 'observatory.patch').write_bytes(patch)
+          PY
+          git apply --check "$RUNNER_TEMP/observatory.patch"
+          git apply "$RUNNER_TEMP/observatory.patch"
+          git diff --check
+      - run: npm ci
+      - name: Typecheck, build and new parser/model regression tests
+        run: |
+          npm run typecheck
+          npm run build
+          node --test tests/observatory-model.test.mjs tests/observatory-extraction.test.mjs
+      - name: Install browser test runtime
+        run: |
+          npx playwright install --with-deps chromium
+          python3 -m pip install playwright==1.63.0
+      - name: Actual local crawl and accessible GUI acceptance
+        run: python3 tests/observatory_e2e.py
+      - name: Preserve executable runtime for independent local review
+        if: always()
+        shell: bash
+        run: |
+          if [ -d dist ] && [ -d ui-dist ] && [ -d node_modules ]; then
+            tar -czf "$RUNNER_TEMP/observatory-runtime.tar.gz" dist ui ui-dist node_modules package.json
+          fi
+      - name: Preserve actual screenshots and runtime
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: observatory-review-${{ github.run_id }}
+          path: |
+            docs/observatory-*.png
+            ${{ runner.temp }}/observatory-runtime.tar.gz
+          retention-days: 3
+      - name: Commit validated source and screenshots to the feature branch only
+        shell: bash
+        run: |
+          git rm maintenance/observatory-0.b64 maintenance/observatory-1.b64 maintenance/observatory-2.b64 maintenance/observatory-3.b64 maintenance/observatory-4.b64 .github/workflows/apply-observatory.yml
+          git add -A
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: Observatory analytics, editorial redesign and accessible reading modes'
+          git push origin HEAD:refs/heads/studio/observatory-accessibility
