@@ -20,7 +20,7 @@ jobs:
       REQUIRE_BROWSER: '1'
     outputs:
       version: ${{ steps.version.outputs.version }}
-      build_required: ${{ steps.build_required.outputs.build_required }}
+      build_required: ${{ steps.version.outputs.build_required }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
