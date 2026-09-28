@@ -1,6 +1,8 @@
 // Repository note: Implements browser-side Studio interactions, views, filtering, history, controls, and exports.
 // Browser-side controller for Web Crawler Studio: forms, live progress, results, history, and exports.
 
+import { Observatory } from './observatory.js';
+import { installAccessibility } from './accessibility.js';
 import { sectionDetails, preserveResultPosition, normalizeWebsite, describePlan } from './interaction.js';
 import { PageSelection, sortPages, pageColumns, columnLabels, visibleColumns, pageGrid, type PageColumn, type PageSort } from './page-grid.js';
 import { ConnectionUI } from './connection.js';
@@ -14,7 +16,7 @@ import { AtlasWorkspace, type AtlasTab } from './atlas.js';
 import type { Job, JobMeta } from '../src/studio/jobs.js';
 import type { CrawledPage } from '../src/types.js';
 
-type Tab = 'overview' | 'pages' | 'issues' | 'graph' | 'paths' | 'elements' | 'activity' | WorkbenchTab;
+type Tab = 'observatory' | 'overview' | 'pages' | 'issues' | 'graph' | 'paths' | 'elements' | 'activity' | WorkbenchTab;
 type Issue = { title: string; detail: string; url: string; severity: 'error' | 'review' | 'info' };
 const icons: Record<string, string> = {
   sidebar: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/>',
@@ -61,6 +63,7 @@ try { const saved = localStorage.getItem('studio-page-columns-v1'); if (saved) c
 const queries: Record<string,string> = { pages: '', issues: '' };
 const atlas = new AtlasWorkspace({ openPage, notify: toast, api: path => api(path), navigate: next => { showView('workspace'); setTab(next as Tab); } });
 const host = { openPage, notify: toast, api: (path: string) => api(path), navigate: (next: string) => { showView('workspace'); setTab(next as Tab); } };
+const observatory = new Observatory(host);
 const workbench = new Workbench(host);
 const inspector = new PageInspector(host);
 const profiles = new Profiles($<HTMLFormElement>('crawl-form'), toast);
@@ -255,6 +258,8 @@ function renderResults(): void {
   $('workspace-description').textContent = sectionDetails[tab]![1];
   $('page-viewbar').hidden = tab !== 'pages'; $('page-columns').hidden = tab !== 'pages';
   $('page-selection').hidden = tab !== 'pages' || !selection.urls.size;
+  if (tab === 'observatory') { atlas.leave(); workbench.leave(); observatory.render(target, selected); return; }
+  observatory.leave();
   if (workbenchTabs.includes(tab as WorkbenchTab)) { atlas.leave(); workbench.show(target, tab as WorkbenchTab, selected); return; }
   workbench.leave();
   if (['overview', 'graph', 'paths', 'elements'].includes(tab)) { atlas.render(target, tab as AtlasTab, selected); return; }
@@ -503,7 +508,7 @@ function runCommand(command: string): void {
 }
 $('command-search').addEventListener('input', () => {
   const q = $<HTMLInputElement>('command-search').value.trim().toLowerCase();
-  const sections: [string,string][] = [['overview','Insights'],['pages','Pages'],['graph','Visual Atlas spiderweb'],['paths','URL paths'],['elements','Images and elements'],['issues','Issues'],['javascript','JavaScript analysis'],['resources','Resources and network'],['structured','Structured data'],['sitemaps','Sitemaps'],['robots','Robots'],['custom','Custom extraction'],['activity','Activity']];
+  const sections: [string,string][] = [['observatory','Observatory'],['overview','Insights'],['pages','Pages'],['graph','Visual Atlas spiderweb'],['paths','URL paths'],['elements','Images and elements'],['issues','Issues'],['javascript','JavaScript analysis'],['resources','Resources and network'],['structured','Structured data'],['sitemaps','Sitemaps'],['robots','Robots'],['custom','Custom extraction'],['activity','Activity']];
   const commands = ['show 404s','javascript pages','images missing alt','external links','new crawl'].filter(c => c.includes(q));
   const pages = Object.values(selected?.result?.pages ?? {}).filter(p => q && `${p.url} ${p.title} ${p.heading} ${p.image_urls.join(' ')}`.toLowerCase().includes(q)).slice(0,12);
   $('command-results').innerHTML = commands.map(c=>`<button data-command="${esc(c)}"><b>Command</b> ${esc(c)}</button>`).join('') + sections.filter(([,name])=>name.toLowerCase().includes(q)).map(([key,name])=>`<button data-jump="${key}">${name}<span>↗</span></button>`).join('') + pages.map(p=>`<button data-page="${esc(p.url)}"><span>${esc(p.title||p.heading||p.url)}<small>${esc(p.url)}</small></span></button>`).join('') || '<p>No matches in this crawl.</p>';
@@ -561,6 +566,6 @@ $('command-dialog').addEventListener('keydown', event => {
 });
 document.addEventListener('pointerdown', event => { const columns = $<HTMLDetailsElement>('page-columns'); if (columns.open && !columns.contains(event.target as Node)) columns.open = false; });
 $('page-columns').addEventListener('keydown', event => { if (event.key === 'Escape') { $<HTMLDetailsElement>('page-columns').open = false; $('page-columns').querySelector<HTMLElement>('summary')?.focus(); } });
-hydrate(); theme(); showView(view); renderSidebar(); renderCrawl(); void poll();
+installAccessibility(); hydrate(); theme(); showView(view); renderSidebar(); renderCrawl(); void poll();
 setInterval(() => { updateElapsed(); if (!document.hidden) void poll(); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void poll(); });

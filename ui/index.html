@@ -18,6 +18,7 @@
   <script src="/app.js" type="module">
   </script>
   <link href="/interaction.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="/observatory.css">
  </head>
  <body>
   <a class="skip-link" href="#main">
@@ -406,6 +407,9 @@
         <span aria-hidden="true" class="nav-group-label">
          EXPLORE
         </span>
+        <button aria-controls="result-content" aria-label="Observatory" aria-selected="false" class="tab" data-tab="observatory" id="tab-observatory" role="tab" tabindex="-1" title="Observatory">
+         <span data-icon="globe"></span><span class="nav-text">Observatory</span>
+        </button>
         <button aria-controls="result-content" aria-label="Insights" aria-selected="false" class="tab" data-tab="overview" id="tab-overview" role="tab" tabindex="-1" title="Overview">
          <span data-icon="grid">
          </span>
@@ -1694,6 +1698,15 @@
     </button>
    </div>
    <div class="modal-body">
+    <fieldset id="access-preferences">
+     <legend>Reading &amp; accessibility</legend>
+     <label class="access-option" for="access-text"><span>Interface text size</span><select id="access-text"><option value="normal">Standard</option><option value="large">Large</option><option value="extra">Extra large</option></select></label>
+     <label class="access-option" for="access-contrast"><span>Higher contrast</span><input type="checkbox" id="access-contrast"></label>
+     <label class="access-option" for="access-motion"><span>Reduce motion</span><input type="checkbox" id="access-motion"></label>
+     <label class="access-option" for="access-tables"><span>Prefer Observatory data tables</span><input type="checkbox" id="access-tables"></label>
+     <p id="access-status" role="status" aria-live="polite">System reduced-motion preferences are always respected. Browser zoom is also supported.</p>
+    </fieldset>
+
     <div class="setting-row">
      <div>
       <strong>

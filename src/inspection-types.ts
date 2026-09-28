@@ -14,7 +14,26 @@ export interface StructuredItem {
   error?: string;
   context?: string;
 }
+/** Static markup checks. Missing fields in older histories mean unknown, not zero. */
+export interface AccessibilitySnapshot {
+  version: 1;
+  language: string;
+  h1_count: number;
+  images: number;
+  images_missing_alt: number;
+  controls: number;
+  controls_without_name: number;
+  links: number;
+  links_without_name: number;
+  buttons: number;
+  buttons_without_name: number;
+  inspected_elements: number;
+  truncated: boolean;
+}
 export interface PageInspection {
+  accessibility?: AccessibilitySnapshot;
+  /** SHA-256 of complete whitespace-normalized body text; absent for empty/truncated text. */
+  content_fingerprint?: string;
   word_count: number;
   text_sample: string;
   metadata: Record<string, string[]>;

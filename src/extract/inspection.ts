@@ -1,4 +1,6 @@
 /** Additional static analysis shares the existing inert JSDOM document. */
+import { createHash } from 'node:crypto';
+import { inspectAccessibility } from './accessibility.js';
 import { safeHTTP } from '../url.js';
 import type { ExtractionRule, PageInspection, StructuredItem } from '../inspection-types.js';
 const clean = (text: string | null | undefined, max = 4000) => (text ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -26,6 +28,8 @@ export function inspectDocument(doc: Document, url: string, rules: ExtractionRul
   const body = doc.body?.cloneNode(true) as HTMLElement | undefined;
   body?.querySelectorAll('script,style,template,noscript,[hidden],[aria-hidden="true"]').forEach(el => el.remove());
   const fullText = clean(body?.textContent, 2 * 1024 * 1024);
+  const content_fingerprint = fullText && fullText.length < 2 * 1024 * 1024 ? `sha256-text-v1:${createHash('sha256').update(fullText).digest('hex')}` : undefined;
+  const accessibility = inspectAccessibility(doc);
   const word_count = fullText ? fullText.split(/\s+/u).length : 0;
   let truncated = metaNodes.length > 100 || fullText.length >= 2 * 1024 * 1024;
   const structured_data: StructuredItem[] = [];
@@ -76,6 +80,6 @@ export function inspectDocument(doc: Document, url: string, rules: ExtractionRul
       custom[rule.name] = Array.from(matches).slice(0, 30).map(el => rule.mode === 'html' ? el.outerHTML.slice(0, 2000) : rule.mode === 'attribute' ? (el.getAttribute(rule.attribute!) ?? '').slice(0, 2000) : clean(el.textContent, 2000));
     } catch { extraction_errors.push(`${rule.name}: invalid or unsupported CSS selector`); custom[rule.name] = []; }
   }
-  return { word_count, text_sample: fullText.slice(0, 4000), metadata, hreflang, structured_data,
+  return { accessibility, content_fingerprint, word_count, text_sample: fullText.slice(0, 4000), metadata, hreflang, structured_data,
     technologies, custom, extraction_errors, render_signals, truncated };
 }

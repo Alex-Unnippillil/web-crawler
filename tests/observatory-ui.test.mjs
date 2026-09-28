@@ -42,3 +42,13 @@ test('leaving and remounting does not duplicate delegated actions', () => fixtur
 test('hostile captured strings are rendered as text, not elements', () => fixture(({root,view}) => {
   const capture=job();capture.result.pages['https://fixture.example/a'].title='<img src=x onerror=alert(1)>';view.render(root,capture);assert.equal(root.querySelectorAll('img,script').length,0);assert.match(root.textContent,/<img src=x/);
 }));
+
+test('chart geometry uses SVG attributes compatible with the strict style policy', () => fixture(({root,view}) => {
+  const capture=job();capture.result.pages['https://fixture.example/a'].status_code=200;capture.result.pages['https://fixture.example/a'].duration_ms=400;
+  view.render(root,capture);
+  assert.equal(root.querySelectorAll('#obs-charts [style]').length,0);
+  const bars=Array.from(root.querySelectorAll('.obs-hbars rect'));
+  assert.equal(Number(bars[0].getAttribute('width')),100);
+  assert.equal(Number(bars[1].getAttribute('width')),0);
+  assert.equal(root.querySelectorAll('.obs-histogram rect').length,5);
+}));
