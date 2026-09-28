@@ -53,6 +53,7 @@ jobs:
           python3 tests/e2e.py
           python3 tests/hybrid_e2e.py
           python3 tests/glass_e2e.py
+          python3 tests/observatory_e2e.py
           node tests/scale.mjs 1000 > "$RUNNER_TEMP/scale.json"
       - name: Preserve actual screenshots and scale measurements
         if: always() && runner.os == 'Linux'
@@ -62,5 +63,6 @@ jobs:
           path: |
             docs/hybrid-*.png
             docs/glass-*.png
+            docs/observatory-*.png
             ${{ runner.temp }}/scale.json
           retention-days: 7
