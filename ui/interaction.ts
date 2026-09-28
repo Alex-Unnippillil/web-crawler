@@ -1,5 +1,6 @@
 /** Small end-user interaction helpers, kept independent of crawler and API policy. */
 export const sectionDetails: Record<string, [string, string]> = {
+  observatory: ['Observatory', 'See patterns in captured evidence, then prioritize the next fix.'],
   overview: ['Overview', 'Patterns, coverage, and findings across this crawl.'],
   pages: ['Pages', 'Find a page, select a set, or open its captured details.'],
   issues: ['Issues', 'Review evidence and trace each finding to its source.'],

@@ -8,7 +8,36 @@
 
 Enter a URL, choose a crawl mode, and explore pages, links, images, resources, structured data, and site architecture. Smart mode uses lightweight HTTP first and escalates sparse application shells to a reusable Chromium browser only when needed. No cloud account, API key, hosted database, or subscription is required.
 
-## Interaction workspace — 4.3.0
+## Observatory workspace — 4.4.0
+
+**An editorial redesign, richer visual analysis, and a more adaptable standalone workspace.** Light ivory and deep night surfaces, restrained teal/copper accents, serif display headings and clearer controls replace the previous glass-heavy presentation. Existing crawl modes, tools, history and safeguards stay intact.
+
+![Observatory in the running application, showing the included local demonstration crawl](docs/observatory-desktop.png)
+
+The new **Observatory** brings four complementary views together: a metadata **radar/spiderweb chart**, **horizontal HTTP outcome bars**, a **visit-duration histogram**, and **stacked discovery-depth bars**. Every chart has labelled values and an expandable data table. The existing interactive **Link map** remains available for the node-link spiderweb. Coverage is calculated only from eligible measurements; unavailable data is **N/A**, not a passing score.
+
+![Radar, horizontal bars, histogram and stacked bars with accessible data-table alternatives](docs/observatory-charts.png)
+
+| Added capability | What you can do |
+| --- | --- |
+| Static accessibility observations | Review missing document language/H1, missing image alt attributes, and native controls, links or buttons without a name recognized by the bounded markup heuristics. |
+| Duplicate-text fingerprints | Find groups with matching complete normalized body text, separately from repeated titles. Empty/truncated text is not fingerprinted. |
+| Failed-link source tracing | Find source pages pointing to observed internal HTTP failures; unvisited URLs and robots/sitemap-only failures are not assumed broken. |
+| Filterable evidence list | Combine category, severity and text search, open the source-page inspector, and export **every matching observation**, across pagination. |
+| Complete page-priority inventory | Rank all captured pages by finding count, slowest visit or distinct linking pages. Export all metrics; unknown measurements stay unknown. |
+| Reading preferences | Select Standard/Large/Extra-large text, higher contrast, reduced motion or table-first Observatory charts in **Workspace settings**. Preferences stay in the browser. |
+
+To try it without contacting an external site: **Home → Explore sample sites → Explore visual demo → Observatory**. The bundled fixture contains 37 pages and deliberately includes issues for demonstration. Lists display 20 rows per page; their exports include all filtered findings or all page metrics, not just the visible rows. Evidence filters do not alter the whole-capture charts.
+
+The interface retains keyboard navigation and the skip link, provides visible focus and larger primary/control targets, reflows on narrow screens, and respects operating-system reduced motion and forced-color settings. Each graph can be replaced by its data table. No remote fonts or chart CDN dependencies are added.
+
+![Reading preferences in the redesigned workspace](docs/observatory-accessibility.png)
+
+**Interpretation matters:** static observations are not a full WCAG audit, radar coverage is not a quality/SEO score, and elapsed crawler visits are not Core Web Vitals. Older histories remain readable but need a new crawl for the additional optional inspection fields. Network protections and owner-authentication boundaries are unchanged.
+
+See [Observatory definitions, usage, data schema, accessibility and validation](docs/OBSERVATORY.md) for denominators, the 5,000-element inspection limit, fingerprint rules, CSV semantics, keyboard behavior and known limitations. Portable packages continue to include Node.js; Chromium is optional, and builds remain unsigned/not notarized.
+
+## Previous workspace improvements — 4.3.0
 
 A URL-first **Home**, grouped sidebar and consistent controls make the day-to-day workflow clearer. Open **Examples** to choose a local sample instead of navigating competing demo buttons. Technical run telemetry remains under **Run details**, and summary metrics open the corresponding analysis.
 

@@ -45,6 +45,10 @@ function openBrowser(url: string): void {
   const child = spawn(command, args, { stdio: 'ignore', detached: true }); child.on('error', () => {}); child.unref();
 }
 export async function startStudio(config: { port?: number; directory?: string; open?: boolean; hooks?: CrawlHooks; assets?: string } = {}) {
+  // One manifest is authoritative in source and extracted portable builds.
+  const manifest = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8')) as { version?: unknown };
+  if (typeof manifest.version !== 'string' || !manifest.version) throw new Error('Application package version is missing. Re-extract the complete distribution.');
+  const version = manifest.version;
   const media = new MediaPreviews();
   const access = new OwnerAccess();
   const guardedFetch = access.wrap(config.hooks?.fetchImpl ?? publicFetch);
@@ -69,7 +73,7 @@ export async function startStudio(config: { port?: number; directory?: string; o
         const received = Buffer.from(String(req.headers['x-crawler-token'] ?? ''));
         const secret = Buffer.from(token);
         if (received.length !== secret.length || !timingSafeEqual(received, secret)) { send(res, 403, { error: 'Session expired. Refresh this page.' }); return; }
-        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version: '4.3.0', browser: browserState }); return; }
+        if (url.pathname === '/api/state' && req.method === 'GET') { send(res, 200, { jobs: store.list(), busy: store.busy(), dataDirectory: store.directory, version, browser: browserState }); return; }
         if (url.pathname === '/api/access' && req.method === 'GET') { send(res, 200, access.state()); return; }
         if (url.pathname === '/api/access' && ['POST', 'DELETE'].includes(req.method ?? '')) {
           if (store.busy() || probing) { send(res, 409, { error: 'Stop the active crawl or connection check before changing owner access.' }); return; }
@@ -142,6 +146,10 @@ export async function startStudio(config: { port?: number; directory?: string; o
         '/': ['ui/index.html', 'text/html'], '/index.html': ['ui/index.html', 'text/html'],
         '/app.js': ['ui-dist/app.js', 'text/javascript'], '/styles.css': ['ui/styles.css', 'text/css'],
         '/favicon.svg': ['ui/favicon.svg', 'image/svg+xml'],
+        '/observatory.js': ['ui-dist/observatory.js', 'text/javascript'],
+        '/observatory-model.js': ['ui-dist/observatory-model.js', 'text/javascript'],
+        '/accessibility.js': ['ui-dist/accessibility.js', 'text/javascript'],
+        '/observatory.css': ['ui/observatory.css', 'text/css'],
         '/atlas.js': ['ui-dist/atlas.js', 'text/javascript'],
         '/atlas-model.js': ['ui-dist/atlas-model.js', 'text/javascript'],
         '/atlas-graph.js': ['ui-dist/atlas-graph.js', 'text/javascript'],

@@ -56,6 +56,7 @@ jobs:
           python3 tests/e2e.py
           python3 tests/hybrid_e2e.py
           python3 tests/glass_e2e.py
+          python3 tests/observatory_e2e.py
   package:
     needs: validate
     if: needs.validate.outputs.build_required == 'true'
@@ -125,4 +126,4 @@ jobs:
           gh release create "v$VERSION" downloads/* \
             --target "${{ github.sha }}" \
             --title "Web Crawler Studio $VERSION" \
-            --notes "Interaction workspace: a URL-first Home screen, review-before-start crawl summary, grouped responsive navigation and optional icon rail, consistent primary actions, clickable metrics, and a quieter Run details panel. The page inventory adds sortable headers, column visibility, quick filters, 20/50/100-row pagination, deliberate multi-page selection, Copy URLs and explicitly scoped CSV export. Selection/live refresh preserve focus and scroll. Previous/Next and Alt+Arrow in the page inspector retain the active tab. History gains search, status filtering and sorting; appearance controls are grouped in Workspace settings. See docs/INTERFACE.md for selection/export semantics, keyboard controls and limits. Existing Fast HTTP, Smart Hybrid, sandboxed Chromium, Visual Atlas, image galleries, custom extraction, profiles, connection diagnostics and exact-origin owner access remain supported. No crawling/security policy is relaxed. Download the ZIP matching your OS, extract it completely, and open the launcher. Node.js 24 and production dependencies are bundled. Chromium remains an optional one-time download through Install Browser.cmd or bash install-browser.sh. Start with Explore sample sites on Home or Examples in a workspace. Builds are unsigned/not notarized; verify the SHA-256 sidecar and follow your OS security policy. README.md contains setup/update instructions."
+            --notes "Observatory workspace: editorial light/dark redesign, metadata radar, HTTP outcome bars, visit-duration histogram, discovery-depth stacked bars, complete page rankings and filterable evidence lists. Static accessibility heuristics, complete body-text fingerprints, repeated-title groups and captured failed-link source tracing. Adjustable text, high contrast, reduced motion and table-first charts improve usability without changing network policy. See README.md and docs/OBSERVATORY.md for definitions, denominators, limits and accessibility checks. Existing HTTP/Smart/Browser modes, Visual Atlas, custom extraction and owner-access controls remain available. Extract the matching portable ZIP and open the launcher. Node.js 24 and production dependencies are bundled; Chromium is an optional separate download. Community builds remain unsigned and not notarized. Verify the SHA-256 sidecar and follow OS security policy."

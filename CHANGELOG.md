@@ -1,4 +1,15 @@
 <!-- Repository note: Records user-visible changes between project versions. -->
+
+## 4.4.0 — Observatory
+
+- Redesigned the shared light/dark shell with editorial typography, opaque data surfaces, consistent primary controls and responsive chart cards.
+- Added an Observatory radar, HTTP outcome bars, duration histogram and discovery-depth stacked bars, each with text/value/table alternatives.
+- Added filterable evidence with full-scope CSV export and a complete paginated page-priority inventory.
+- Captured bounded static accessibility snapshots and complete normalized body-text SHA-256 fingerprints; added repeated-title/body-text groups and evidence-only failed-link source tracing.
+- Added allowlisted local reading preferences: larger text, higher contrast, reduced motion and table-first charts; preserved keyboard, inspector and legacy-history workflows.
+- Added pure-model, inert-extraction and real-Studio browser tests; included the new acceptance suite in CI and portable-release validation.
+- Documented definitions, unknown/partial data, limits, export scope and accessibility boundaries in README and docs/OBSERVATORY.md. No crawl security policy was relaxed.
+
 # Changelog
 
 ## 4.3.0 — Interaction workspace (2026-09-17)
