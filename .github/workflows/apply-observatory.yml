@@ -48,6 +48,7 @@ jobs:
           path.write_text(text)
           PY
           python3 maintenance/refine_observatory.py
+          python3 maintenance/finish_observatory.py
           git diff --check
       - run: npm ci
       - name: Typecheck, build and new parser/model/DOM regression tests
@@ -80,9 +81,16 @@ jobs:
       - name: Commit validated source and screenshots to the feature branch only
         shell: bash
         run: |
-          git rm maintenance/observatory-0.b64 maintenance/observatory-1.b64 maintenance/observatory-2.b64 maintenance/observatory-3.b64 maintenance/observatory-4.b64 maintenance/observatory-fixes.patch maintenance/refine_observatory.py .github/workflows/apply-observatory.yml
+          # GITHUB_TOKEN intentionally cannot modify workflows. Those are updated separately
+          # through the connected user's authorized GitHub workflow-editing action.
+          git restore --source=HEAD --staged --worktree -- .github/workflows
+          git rm maintenance/observatory-0.b64 maintenance/observatory-1.b64 maintenance/observatory-2.b64 maintenance/observatory-3.b64 maintenance/observatory-4.b64 maintenance/observatory-fixes.patch maintenance/refine_observatory.py maintenance/finish_observatory.py
           git add -A
           git diff --cached --check
+          if git diff --cached --name-only | grep -q '^.github/workflows/'; then
+            echo 'Unexpected workflow modification; refusing to push.' >&2
+            exit 1
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat: Observatory analytics, editorial redesign and accessible reading modes'
