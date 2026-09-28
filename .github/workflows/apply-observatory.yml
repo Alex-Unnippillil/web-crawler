@@ -34,13 +34,15 @@ jobs:
           PY
           git apply --check "$RUNNER_TEMP/observatory.patch"
           git apply "$RUNNER_TEMP/observatory.patch"
+          git apply --check maintenance/observatory-fixes.patch
+          git apply maintenance/observatory-fixes.patch
           git diff --check
       - run: npm ci
-      - name: Typecheck, build and new parser/model regression tests
+      - name: Typecheck, build and new parser/model/DOM regression tests
         run: |
           npm run typecheck
           npm run build
-          node --test tests/observatory-model.test.mjs tests/observatory-extraction.test.mjs
+          node --test tests/observatory-model.test.mjs tests/observatory-extraction.test.mjs tests/observatory-ui.test.mjs
       - name: Install browser test runtime
         run: |
           npx playwright install --with-deps chromium
@@ -66,7 +68,7 @@ jobs:
       - name: Commit validated source and screenshots to the feature branch only
         shell: bash
         run: |
-          git rm maintenance/observatory-0.b64 maintenance/observatory-1.b64 maintenance/observatory-2.b64 maintenance/observatory-3.b64 maintenance/observatory-4.b64 .github/workflows/apply-observatory.yml
+          git rm maintenance/observatory-0.b64 maintenance/observatory-1.b64 maintenance/observatory-2.b64 maintenance/observatory-3.b64 maintenance/observatory-4.b64 maintenance/observatory-fixes.patch .github/workflows/apply-observatory.yml
           git add -A
           git diff --cached --check
           git config user.name 'github-actions[bot]'
